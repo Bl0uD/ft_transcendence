@@ -1,0 +1,25 @@
+# Environment variables and secrets (sensitive data)
+.env
+.env.local
+secrets/*
+!secrets/
+!secrets/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Credentials in any format
+*credentials*
+*password*
+!sources/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
