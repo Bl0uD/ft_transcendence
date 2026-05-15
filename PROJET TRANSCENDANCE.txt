@@ -1,0 +1,119 @@
+PROJET TRANSCENDANCE :
+
+Etapes :
+
+===========================================================
+
+Infrastructure - Docker - Auth - DB.
+docker-compose.yml avec Nginx, Next.js, PostgreSQL
+HTTPS auto-signé (certificat SSL dans Nginx)
+Variables d'env dans .env · jamais de secrets en dur
+Prisma schema + migrations + volume postgres-data
+Register / Login / Logout via JWT ou session sécurisée (NextAuth/Auth.js)
+Hash des mots de passe (bcrypt), validation des inputs
+Architecture App Router Next.js (app/, api/, lib/, services/)
+Makefile : up, down, logs, shell, migrate
+
+Definition of done — semaine 1
+make up
+démarre tout sans erreur
+https://localhost
+ répond (Nginx → Next.js)
+Register POST → token/session retourné
+Login POST → authentification valide
+make down && make up → les données persistent
+Aucun secret dans le code (git grep -r "SECRET")
+
+===========================================================
+
+API REST - Profils - Utilisateurs - Amis.
+Route profil : GET/PATCH /api/users/me (avatar, displayname)
+Système d'amis : send/accept/decline/remove (table Friendship)
+GET /api/users · GET /api/users/{id} avec permissions
+Upload avatar (volume media/ servi par Nginx)
+OAuth 42 si requis par le sujet
+Validation des inputs côté serveur (zod ou validator)
+Tests unitaires sur les endpoints critiques
+
+Definition of done — semaine 2
+CRUD profil complet via API (Postman/curl)
+Avatar uploadé et accessible via URL Nginx
+A peut envoyer/accepter demande d'ami à B
+Endpoint non-authentifié retourne 401
+Tests passent dans le container (make test)
+Ne pas commencer les pages frontend tant que les routes API ne sont pas stables — changer les endpoints casse tout.
+
+===========================================================
+
+WebSocket - Presence online - Chat
+Ajouter Redis au docker-compose
+Serveur WebSocket Node.js intégré à Next.js ou serveur WS dédié
+Connexion/déconnexion authentifiée via JWT/session
+Présence online : statut stocké dans Redis, diffusé aux amis
+Chat privé entre deux users (rooms Redis par paire)
+Historique des messages en DB (table Message)
+Gestion reconnexion + heartbeat websocket
+
+Definition of done — semaine 3
+Connexion WS depuis deux onglets → statuts online synchronisés
+Message envoyé → reçu en temps réel sans refresh
+Reconnexion après coupure → historique rechargé
+WS non-authentifié refusé
+Redis restart → les connexions se reconstituent
+Semaine la plus risquée techniquement. Prévois +1 jour de marge. Teste le WS avant d'écrire une ligne de chat.
+
+===========================================================
+
+Jeu local - Game engine
+Game loop fixe (requestAnimationFrame, 60fps)
+Contrôles clavier local (2 joueurs même écran)
+Score, fin de partie, écran de résultat
+Enregistrement du match en DB (table Match)
+Historique des parties sur le profil utilisateur
+Renderer Canvas isolé du réseau et de React
+
+Definition of done — semaine 4
+Partie locale jouable de bout en bout (2 joueurs)
+Physique déterministe (même seed → même résultat)
+Score sauvegardé en DB à chaque fin de partie
+60fps stables (pas de freeze, pas de lag input)
+Game loop entièrement isolée (pas couplée au WS)
+Garder la physique dans un module TS/JS pur sans dépendances React — tu en auras besoin côté serveur en Semaine5.
+
+===========================================================
+
+Jeu reseau online - Sync serveur - Tournois - Matchmaking
+Game server authoritative : état de jeu géré côté serveur
+Client envoie inputs → serveur calcule → broadcast état
+Tickrate fixe serveur (30/60 ticks)
+Réconciliation client (interpolation légère)
+Bracket tournoi : création, matchmaking, avancement automatique
+Invitation à une partie via WS + notification
+Cleanup propre des games/sockets à la déconnexion
+
+Definition of done — semaine 5
+2 joueurs sur 2 navigateurs différents jouent en temps réel
+Le serveur est authoritative (tricher client-side n'a aucun effet)
+Déconnexion mid-game → forfait propre, match enregistré
+Tournoi 4 joueurs complété de bout en bout
+Résultats du tournoi visibles sur les profils
+
+===========================================================
+
+Securite - Polish - Tests - Soutenance
+Audit sécurité : XSS, CSRF, injection SQL, headers HTTP
+2FA TOTP si requis par le sujet
+Expiration/révocation JWT ou sessions sécurisées
+Rate limiting sur auth + websocket
+Tests end-to-end sur les flux critiques
+Accessibilité : navigation clavier, contraste, ARIA
+Responsive design (mobile + desktop)
+README complet · schéma d'archi · guide de lancement
+
+Definition of done — semaine 6 (= critères de soutenance)
+git clone && make up → tout fonctionne sur une machine vierge
+Aucun secret dans le dépôt (git log + grep)
+XSS : injection de <script> dans chat → neutralisée
+SQL : ' OR '1'='1 dans login → refusé
+Tous les containers redémarrent automatiquement ( restart: unless-stopped )
+Démo complète : register → profil → ami → chat → partie → tournoi

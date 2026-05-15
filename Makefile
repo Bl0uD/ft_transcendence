@@ -1,23 +1,38 @@
-all: sanitize-volumes
-	docker compose -f Sources/docker-compose.yml up -d --build
+COMPOSE := docker compose -f Sources/docker-compose.yml
 
-sanitize-volumes:
-	@for volume in Sources_mariadb_data Sources_wordpress_data; do \
-		if docker volume inspect $$volume >/dev/null 2>&1; then \
-			if docker volume inspect -f '{{if .Options}}{{index .Options "o"}}{{end}}' $$volume | grep -q '^bind$$'; then \
-				echo "Removing legacy bind-mounted volume $$volume"; \
-				docker volume rm $$volume >/dev/null; \
-			fi; \
-		fi; \
-	done
+all: up
+
+help:
+	@echo "Usage:"
+	@echo "  make up      - build and start services"
+	@echo "  make build   - build images"
+	@echo "  make down    - stop services"
+	@echo "  make logs    - follow logs"
+	@echo "  make ps      - list containers"
+	@echo "  make clean   - prune docker system"
+	@echo "  make help    - this message"
+
+up:
+	$(COMPOSE) up -d --build
+
+build:
+	$(COMPOSE) build --progress=plain
 
 down:
-	docker compose -f Sources/docker-compose.yml down
+	$(COMPOSE) down
 
 down-v:
-	docker compose -f Sources/docker-compose.yml down -v
+	$(COMPOSE) down -v
 
-re: down all
+re: down up
+
+restart: down up
+
+logs:
+	$(COMPOSE) logs -f
+
+ps:
+	$(COMPOSE) ps
 
 clean: down
 	docker system prune -af
@@ -25,11 +40,8 @@ clean: down
 fclean: clean
 	docker volume prune -f
 
-#reset: down-v
-#	docker volume rm Sources_mariadb_data Sources_wordpress_data inception_mariadb_data inception_wordpress_data 2>/dev/null || true
-
 dev: fclean
 	@echo "Adding files from current directory only..."
-	@git add . && git diff --cached --quiet || (git commit -m "Inception - auto/dev" && git push) || echo "No changes to commit"
+	@git add . && git diff --cached --quiet || (git commit -m "Transcendence - auto/dev" && git push) || echo "No changes to commit"
 
-.PHONY: all sanitize-volumes down down-v re clean fclean reset
+.PHONY: all up build down down-v re restart logs ps clean fclean dev help
