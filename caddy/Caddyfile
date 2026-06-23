@@ -1,0 +1,21 @@
+# On écoute sur localhost (Caddy va générer un certificat auto-signé local de confiance)
+localhost:443 {
+
+    # 1. Gestion du Frontend (React / Vite)
+    # En PROD, Caddy sert directement les fichiers compilés
+    root * /srv/frontend/dist
+    file_server
+    
+    # Redirection magique pour éviter les erreurs 404 quand on rafraîchit une page sous React Router
+    try_files {path} /index.html
+
+    # 2. Redirection de l'API vers NestJS
+    handle_path /api/* {
+        reverse_proxy backend:3000
+    }
+
+    # 3. Redirection des WebSockets vers NestJS (Le chat temps réel)
+    handle /ws/* {
+        reverse_proxy backend:3000
+    }
+}

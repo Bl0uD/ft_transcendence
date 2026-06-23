@@ -1,0 +1,78 @@
+services:
+  gateway:
+    image: caddy:2-alpine
+    container_name: transcendence_gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./frontend/dist:/srv/frontend/dist # Caddy lit les fichiers buildés du front ici
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - front_net
+    depends_on:
+      - backend
+
+  frontend:
+    build: ./frontend
+    container_name: transcendence_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - front_net
+    environment:
+      - VITE_API_URL=https://localhost/api
+
+  backend:
+    build: ./backend
+    container_name: transcendence_backend
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - front_net
+      - back_net
+    environment:
+      - DATABASE_URL=postgresql://user:password@database:5432/transcendence?schema=public
+      - OLLAMA_HOST=http://ai:11434
+    depends_on:
+      - database
+
+  database:
+    image: postgres:15-alpine
+    container_name: transcendence_database
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: transcendence
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - back_net # Isolé du front et de l'extérieur !
+
+  ai:
+    image: ollama/ollama:latest
+    container_name: transcendence_ai
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - back_net
+
+networks:
+  front_net:
+    driver: bridge
+  back_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  ollama_data:
+  caddy_data:
+  caddy_config:
