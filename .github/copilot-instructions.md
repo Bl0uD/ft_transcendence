@@ -7,7 +7,7 @@ You are an expert software architect and senior full-stack TypeScript developer 
 - **Frontend:** React (SPA) powered by **Vite**, styled with **Tailwind CSS** (and Shadcn/ui).
 - **Backend:** **NestJS (TypeScript)** using strict object-oriented paradigms, dependency injection, and modular architecture.
 - **Containers (5):**
-  1. `gateway`: Caddy (Handles HTTPS automatically, routes `/` to frontend static files, `/api` and `/ws` to NestJS).
+  1. `caddy`: Caddy (Handles HTTPS automatically, routes `/` to frontend static files, `/api` and `/ws` to NestJS).
   2. `frontend`: Vite dev server (dev) or compiled static assets (prod).
   3. `backend`: NestJS application (REST API + WebSockets via NestJS Gateways).
   4. `database`: PostgreSQL (Isolated in the backend network, managed via Prisma or TypeORM).

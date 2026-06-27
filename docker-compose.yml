@@ -1,7 +1,7 @@
 services:
-  gateway:
+  caddy:
     image: caddy:2-alpine
-    container_name: transcendence_gateway
+    container_name: transcendence_caddy
     restart: unless-stopped
     ports:
       - "80:80"
@@ -39,7 +39,6 @@ services:
       - .env
     volumes:
       - ./backend:/app
-      - /app/node_modules
     networks:
       - front_net
       - back_net

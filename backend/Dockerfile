@@ -23,4 +23,4 @@ USER node
 EXPOSE 3000
 
 # Commande par défaut pour lancer NestJS en mode développement
-CMD ["npm", "run", "start:dev"]
+CMD ["npm", "run", "start"]
