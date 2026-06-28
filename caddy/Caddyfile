@@ -1,21 +1,14 @@
-# On écoute sur localhost (Caddy va générer un certificat auto-signé local de confiance)
 localhost:443 {
+    # 1. Redirection de l'API vers NestJS (sans supprimer le préfixe /api/)
+    # On utilise reverse_proxy directement pour garder l'URL intacte
+    reverse_proxy /api/* backend:3000
+    reverse_proxy /ws/* backend:3000
 
-    # 1. Gestion du Frontend (React / Vite)
-    # En PROD, Caddy sert directement les fichiers compilés
-    root * /srv/frontend/dist
-    file_server
-    
-    # Redirection magique pour éviter les erreurs 404 quand on rafraîchit une page sous React Router
+    # 2. Gestion du Frontend
+    # On redirige tout le reste vers le serveur Vite (frontend:5173)
+    reverse_proxy /* frontend:5173
+
+    # Redirection magique pour les routes React (SPA)
+    # Note : Elle doit s'appliquer au frontend, pas à l'API
     try_files {path} /index.html
-
-    # 2. Redirection de l'API vers NestJS
-    handle_path /api/* {
-        reverse_proxy backend:3000
-    }
-
-    # 3. Redirection des WebSockets vers NestJS (Le chat temps réel)
-    handle /ws/* {
-        reverse_proxy backend:3000
-    }
 }

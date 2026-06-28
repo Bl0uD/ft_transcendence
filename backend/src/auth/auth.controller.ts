@@ -1,18 +1,30 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Request, UseGuards } from '@nestjs/common'; // Ajout de Get, Request, UseGuards
+import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
-@Controller('auth') // Avec le préfixe global, la route sera /api/auth
+@Controller('api/auth')
 export class AuthController {
+  
+  constructor(private readonly authService: AuthService) {}
 
-  @Post('register') // Devient /api/auth/register
-  register(@Body() body: any) {
-    console.log('Données reçues :', body);
-
-    // Ici tu appelleras ton service Prisma plus tard. 
-    // Pour l'instant, on renvoie juste un succès artificiel.
+  @Post('register')
+  async register(@Body() body: any) {
+    const user = await this.authService.register(body);
     return {
-      statusCode: 201,
-      message: "Utilisateur créé avec succès (Simulé)",
-      data: body
+      message: "Utilisateur créé avec succès en base de données !",
+      data: user
     };
+  }
+
+  @Post('login')
+  async login(@Body() body: any) {
+    return this.authService.login(body);
+  }
+  
+  // Ta nouvelle route
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user;
   }
 }

@@ -10,7 +10,7 @@ services:
       - .env
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - ./frontend/dist:/srv/frontend/dist
+      - frontend_dist:/srv/frontend/dist
       - caddy_data:/data
       - caddy_config:/config
     networks:
@@ -26,6 +26,9 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - frontend_dist:/app/dist
+    ports:
+      - "5173:5173"
     networks:
       - front_net
     environment:
@@ -39,6 +42,7 @@ services:
       - .env
     volumes:
       - ./backend:/app
+      - /app/node_modules
     networks:
       - front_net
       - back_net
@@ -87,3 +91,4 @@ volumes:
   ollama_data:
   caddy_data:
   caddy_config:
+  frontend_dist:

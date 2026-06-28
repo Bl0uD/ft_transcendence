@@ -13,10 +13,10 @@ RUN npm install
 COPY --chown=node:node . .
 
 # Utilisation de l'utilisateur non privilégié fourni par l'image Node
-USER node
+# USER node
 
 # Port par défaut de Vite
 EXPOSE 5173
 
 # Configuration cruciale pour Docker : --host permet à Caddy de communiquer avec Vite
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm", "run", "dev"]
