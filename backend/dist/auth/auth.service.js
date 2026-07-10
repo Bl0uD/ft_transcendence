@@ -79,6 +79,7 @@ let AuthService = class AuthService {
             return newUser;
         }
         catch (error) {
+            console.error("❌ ERREUR INSCRIPTION :", error);
             if (error instanceof common_1.ConflictException)
                 throw error;
             throw new common_1.InternalServerErrorException("Erreur lors de la création de l'utilisateur");

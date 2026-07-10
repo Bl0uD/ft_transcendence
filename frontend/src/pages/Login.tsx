@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
+import { useAuthStore } from '../store/authStore';
 
 export default function Login() {
   const navigate = useNavigate();
+  
+  const loginGlobal = useAuthStore((state) => state.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,8 +22,13 @@ export default function Login() {
       const response = await api.post('/auth/login', { email, password });
       
       // Stockage du JWT dans le localStorage
-      localStorage.setItem('token', response.data.access_token);
-      
+      localStorage.setItem('access_token', response.data.access_token);
+	  // On prévient le store Zustand immédiatement
+      // Si ton backend ne renvoie pas encore l'objet 'user' dans le login, 
+      // on passe un objet temporaire pour hydrater l'état
+      const userData = response.data.user || { id: 1, username: email.split('@')[0] };
+      loginGlobal(userData);
+
       // Redirection vers le dashboard en cas de succès
       navigate('/dashboard');
     } catch (err: any) {

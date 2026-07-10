@@ -13,11 +13,107 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS ---
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum ChannelType {
+  PUBLIC
+  PRIVATE
+  PROTECTED // Nécessite un mot de passe
+  DIRECT // Pour les messages privés 1-vs-1
+}
+
+enum ChannelRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// --- MODÈLES ---
+
+// Modèle User (À fusionner avec ton existant)
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   username  String   @unique
-  password  String   // On y mettra le mot de passe haché plus tard
+  password  String // On y mettra le mot de passe haché plus tard
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Relations Sociales
+  sentRequests     Friendship[] @relation("SentRequests")
+  receivedRequests Friendship[] @relation("ReceivedRequests")
+
+  // Relations Chat
+  channelMemberships ChannelMember[]
+  messages           Message[]
+}
+
+// Modèle pour les Amis et les Blocages
+model Friendship {
+  id        Int              @id @default(autoincrement())
+  status    FriendshipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  requesterId Int
+  requester   User @relation("SentRequests", fields: [requesterId], references: [id], onDelete: Cascade)
+
+  addresseeId Int
+  addressee   User @relation("ReceivedRequests", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  // Empêche d'avoir plusieurs requêtes entre les deux mêmes utilisateurs
+  @@unique([requesterId, addresseeId])
+}
+
+// Modèle pour les Salons de discussion
+model Channel {
+  id        Int         @id @default(autoincrement())
+  name      String? // Optionnel car les DM (Direct Messages) n'ont pas forcément de nom
+  type      ChannelType @default(PUBLIC)
+  password  String? // Hashé, uniquement si type == PROTECTED
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  members  ChannelMember[]
+  messages Message[]
+}
+
+// Table de liaison entre Utilisateurs et Salons
+model ChannelMember {
+  id   Int         @id @default(autoincrement())
+  role ChannelRole @default(MEMBER)
+
+  // Gestion des sanctions
+  isBanned   Boolean   @default(false)
+  mutedUntil DateTime? // S'il est non-null et dans le futur, l'utilisateur est muet
+
+  joinedAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  channelId Int
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  // Un utilisateur ne peut être membre qu'une seule fois d'un même salon
+  @@unique([userId, channelId])
+}
+
+// Modèle pour les Messages
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+
+  senderId Int
+  sender   User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  channelId Int
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 }

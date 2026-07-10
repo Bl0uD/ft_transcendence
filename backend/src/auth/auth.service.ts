@@ -36,6 +36,7 @@ export class AuthService {
 
       return newUser;
     } catch (error) {
+	  console.error("❌ ERREUR INSCRIPTION :", error);
       if (error instanceof ConflictException) throw error;
       throw new InternalServerErrorException("Erreur lors de la création de l'utilisateur");
     }
