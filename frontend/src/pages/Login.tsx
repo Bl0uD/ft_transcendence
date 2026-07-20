@@ -48,10 +48,10 @@ export default function Login() {
         {/* Header */}
         <div className="text-center">
           <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-            🏓 Transcendence
+            Transcendence
           </h2>
           <p className="mt-2 text-sm text-slate-400">
-            Connectez-vous pour affronter vos adversaires
+            Connectez-vous pour acceder au reseau
           </p>
         </div>
 

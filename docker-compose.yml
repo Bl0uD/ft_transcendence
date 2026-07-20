@@ -52,7 +52,9 @@ services:
       - NODE_ENV=${NODE_ENV}
       - PORT=${BACKEND_PORT}
     depends_on:
-      - database
+      database:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npm run start:dev"
 
   database:
     image: postgres:15-alpine
@@ -68,6 +70,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - back_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   ai:
     image: ollama/ollama:latest
