@@ -17,19 +17,17 @@ export default function Login() {
     setError('');
     setLoading(true);
 
-    try {
+	try {
       // Appel à ton Backend NestJS (via le proxy Caddy /api/auth/login)
       const response = await api.post('/auth/login', { email, password });
       
-      // Stockage du JWT dans le localStorage
+      // 1. Stockage du JWT dans le localStorage
       localStorage.setItem('access_token', response.data.access_token);
-	  // On prévient le store Zustand immédiatement
-      // Si ton backend ne renvoie pas encore l'objet 'user' dans le login, 
-      // on passe un objet temporaire pour hydrater l'état
-      const userData = response.data.user || { id: 1, username: email.split('@')[0] };
-      loginGlobal(userData);
+      
+      // 2. Transmettre les vraies données de l'utilisateur au store Zustand
+      loginGlobal(response.data.user);
 
-      // Redirection vers le dashboard en cas de succès
+      // 3. Redirection vers le dashboard
       navigate('/dashboard');
     } catch (err: any) {
       setError(
@@ -39,7 +37,7 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  };
+  }; 
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 sm:px-6 lg:px-8 text-slate-100">

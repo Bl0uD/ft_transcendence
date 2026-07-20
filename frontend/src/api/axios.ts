@@ -15,7 +15,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Récupération du token stocké lors du login
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     
     // Si le token existe, on l'ajoute dans les headers HTTP
     if (token) {
@@ -45,7 +45,7 @@ api.interceptors.response.use(
       console.warn('🔴 Session expirée ou invalide. Redirection vers le login.');
       
       // Sécurité : Nettoyage du localStorage pour éviter les boucles d'erreur
-      localStorage.removeItem('token');
+      localStorage.removeItem('acccess_token');
       
       // Redirection brutale mais efficace vers la page de login
       window.location.href = '/login';

@@ -5,14 +5,25 @@ export declare class AuthController {
     register(body: any): Promise<{
         message: string;
         data: {
+            email: string;
+            username: string;
+            createdAt: Date;
+            id: number;
+        };
+    }>;
+    login(body: any): Promise<{
+        access_token: string;
+        user: {
             id: number;
             email: string;
             username: string;
             createdAt: Date;
         };
     }>;
-    login(body: any): Promise<{
-        access_token: string;
+    getProfile(req: any): Promise<{
+        email: string;
+        username: string;
+        createdAt: Date;
+        id: number;
     }>;
-    getProfile(req: any): any;
 }

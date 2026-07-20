@@ -18,23 +18,22 @@ function App() {
 
   // 🔄 HYDRATATION DU STORE AU REFRESH (Version 100% simulée sans appel API pour bloquer la boucle)
   useEffect(() => {
-    if (isAuthenticated && !user) {
-      // On commente temporairement le bloc try/catch et l'appel API pour éviter de déclencher l'intercepteur Axios
-      /*
-      try {
-        const response = await api.get('/auth/profile');
-        login(response.data); 
-      } catch (error) {
-        ...
+    const fetchProfile = async () => {
+      if (isAuthenticated && !user) {
+        try {
+          // Appel à la route protégée du Dev A
+          const response = await api.get('/auth/profile');
+          login(response.data); 
+        } catch (error) {
+          console.error("Session invalide ou expirée :", error);
+          // Si le token est invalide ou expiré, on nettoie tout
+          logout();
+        }
       }
-      */
+    };
 
-      // On applique directement le faux profil pour calmer React et Zustand instantanément
-      console.warn("Mode simulation actif : injection directe de l'utilisateur.");
-      const mockUser = { id: 1, username: "jdupuis", email: "jdupuis@gmail.com" };
-      login(mockUser);
-    }
-  }, [isAuthenticated, user, login]);
+    fetchProfile();
+  }, [isAuthenticated, user, login, logout]);
 
   return (
     <BrowserRouter>

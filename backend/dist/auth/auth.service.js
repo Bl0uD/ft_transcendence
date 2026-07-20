@@ -94,10 +94,31 @@ let AuthService = class AuthService {
         const isMatch = await bcrypt.compare(body.password, user.password);
         if (!isMatch)
             throw new common_1.UnauthorizedException('Email ou mot de passe incorrect');
-        const payload = { sub: user.id, email: user.email };
+        const payload = { sub: user.id, email: user.email, username: user.username };
         return {
             access_token: this.jwtService.sign(payload),
+            user: {
+                id: user.id,
+                email: user.email,
+                username: user.username,
+                createdAt: user.createdAt,
+            }
         };
+    }
+    async getProfile(userId) {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                id: true,
+                email: true,
+                username: true,
+                createdAt: true,
+            },
+        });
+        if (!user) {
+            throw new common_1.NotFoundException('Utilisateur non trouvé');
+        }
+        return user;
     }
 };
 exports.AuthService = AuthService;
