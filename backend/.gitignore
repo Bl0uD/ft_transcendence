@@ -1,5 +1,26 @@
-node_modules
-# Keep environment variables out of version control
+# Environment variables and secrets (sensitive data)
 .env
+.env.local
+node_modules
+secrets/*
+!secrets/
+!secrets/.gitkeep
 
-/generated/prisma
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Credentials in any format
+*credentials*
+*password*
+!sources/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

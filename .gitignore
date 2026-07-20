@@ -1,6 +1,7 @@
 # Environment variables and secrets (sensitive data)
 .env
 .env.local
+node_modules
 secrets/*
 !secrets/
 !secrets/.gitkeep
