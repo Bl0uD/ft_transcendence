@@ -1,7 +1,7 @@
 # Environment variables and secrets (sensitive data)
 .env
 .env.local
-node_modules
+.env.*.local
 secrets/*
 !secrets/
 !secrets/.gitkeep
@@ -13,14 +13,21 @@ Thumbs.db
 # Docker
 .dockerignore
 
-# Credentials in any format
+# Credentials (préférer des noms spécifiques pour éviter de bloquer du code source)
 *credentials*
-*password*
 !sources/
 
-# IDE
+# IDE & Editor temporary files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~node_modules/
+*~
+
+# Dépendances
+node_modules/
+
+# Fichiers de build & logs
+dist/
+build/
+*.log
