@@ -41,7 +41,8 @@ model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   username  String   @unique
-  password  String // On y mettra le mot de passe haché plus tard
+  password  String
+  avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

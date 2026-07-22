@@ -17,15 +17,19 @@ const websockets_1 = require("@nestjs/websockets");
 const socket_io_1 = require("socket.io");
 const jwt_1 = require("@nestjs/jwt");
 const prisma_service_1 = require("../prisma/prisma.service");
-const websockets_2 = require("@nestjs/websockets");
+const chat_service_1 = require("./chat.service");
+const common_1 = require("@nestjs/common");
+const send_message_dto_1 = require("./dto/send-message.dto");
 let ChatGateway = class ChatGateway {
     jwtService;
     prisma;
+    chatService;
     server;
     activeConnections = new Map();
-    constructor(jwtService, prisma) {
+    constructor(jwtService, prisma, chatService) {
         this.jwtService = jwtService;
         this.prisma = prisma;
+        this.chatService = chatService;
     }
     async handleConnection(client) {
         try {
@@ -55,8 +59,23 @@ let ChatGateway = class ChatGateway {
         }
     }
     handleJoinChannel(data, client) {
-        console.log("Client a rejoint le canal :", data);
+        const roomId = typeof data === 'string' ? data : data?.roomId;
+        if (roomId) {
+            client.join(roomId);
+            console.log(`Client a rejoint le canal : ${roomId}`);
+        }
         return { event: 'joined', data: 'success' };
+    }
+    async handleSendMessage(client, payload) {
+        const userId = client.data.user?.sub;
+        if (!userId)
+            return;
+        const savedMessage = await this.chatService.saveMessage({
+            content: payload.content,
+            roomId: payload.roomId,
+            authorId: userId,
+        });
+        this.server.to(payload.roomId).emit('receive_message', savedMessage);
     }
 };
 exports.ChatGateway = ChatGateway;
@@ -65,19 +84,30 @@ __decorate([
     __metadata("design:type", socket_io_1.Server)
 ], ChatGateway.prototype, "server", void 0);
 __decorate([
-    (0, websockets_2.SubscribeMessage)('joinChannel'),
-    __param(0, (0, websockets_2.MessageBody)()),
-    __param(1, (0, websockets_2.ConnectedSocket)()),
+    (0, websockets_1.SubscribeMessage)('joinChannel'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __param(1, (0, websockets_1.ConnectedSocket)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, socket_io_1.Socket]),
     __metadata("design:returntype", void 0)
 ], ChatGateway.prototype, "handleJoinChannel", null);
+__decorate([
+    (0, common_1.UsePipes)(new common_1.ValidationPipe({ transform: true })),
+    (0, websockets_1.SubscribeMessage)('send_message'),
+    __param(0, (0, websockets_1.ConnectedSocket)()),
+    __param(1, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [socket_io_1.Socket,
+        send_message_dto_1.SendMessageDto]),
+    __metadata("design:returntype", Promise)
+], ChatGateway.prototype, "handleSendMessage", null);
 exports.ChatGateway = ChatGateway = __decorate([
     (0, websockets_1.WebSocketGateway)({
         namespace: 'chat',
         cors: { origin: '*' },
     }),
     __metadata("design:paramtypes", [jwt_1.JwtService,
-        prisma_service_1.PrismaService])
+        prisma_service_1.PrismaService,
+        chat_service_1.ChatService])
 ], ChatGateway);
 //# sourceMappingURL=chat.gateway.js.map

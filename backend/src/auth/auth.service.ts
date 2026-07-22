@@ -57,7 +57,7 @@ export class AuthService {
     const isMatch = await bcrypt.compare(body.password, user.password);
     if (!isMatch) throw new UnauthorizedException('Email ou mot de passe incorrect');
 
-    const payload = { sub: user.id, email: user.email, username: user.username };
+    const payload = { sub: user.id, email: user.email, username: user.username, avatar: user.avatar };
     return {
       access_token: this.jwtService.sign(payload),
 	  user: {
@@ -65,6 +65,7 @@ export class AuthService {
       	email: user.email,
       	username: user.username,
       	createdAt: user.createdAt,
+		avatar: user.avatar,
 	  }
     };
   }
@@ -77,6 +78,7 @@ export class AuthService {
         email: true,
         username: true,
         createdAt: true,
+		avatar: true,
       },
     });
 

@@ -19,12 +19,19 @@ function App() {
   // 🔄 HYDRATATION DU STORE AU REFRESH (Version 100% simulée sans appel API pour bloquer la boucle)
   useEffect(() => {
     const fetchProfile = async () => {
-      if (isAuthenticated && !user) {
+	  const currentToken = useAuthStore.getState().token;
+
+	  console.log("État actuel -> isAuthenticated:", isAuthenticated, "user:", user, "token présent:", !!currentToken);
+
+      if (isAuthenticated && !user && currentToken) {
         try {
           // Appel à la route protégée du Dev A
-          const response = await api.get('/auth/profile');
-          login(response.data); 
-        } catch (error) {
+		  const response = await api.get('/auth/profile');
+
+		  console.log("Profil récupéré avec succès :", response.data);
+
+          login(response.data, currentToken); 
+        } catch (error: any) {
           console.error("Session invalide ou expirée :", error);
           // Si le token est invalide ou expiré, on nettoie tout
           logout();

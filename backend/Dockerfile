@@ -13,16 +13,11 @@ RUN chown -R node:node /app
 # 3. Passer en utilisateur node pour le reste des opérations
 USER node
 
-# 4. Copier les fichiers et installer les dépendances
+# 4. Copier les fichiers de dépendances et installer tout d'un coup (via le package.json)
 COPY --chown=node:node package*.json ./
-
 RUN npm install 
-RUN npm install @nestjs/jwt passport @nestjs/passport passport-jwt
-RUN npm install -D @types/passport-jwt
-RUN npm install bcrypt
-RUN npm install -D @types/bcrypt
 
-# 5. Copier le code source
+# 5. Copier le reste du code source
 COPY --chown=node:node . .
 
 # 6. Générer le client Prisma et compiler

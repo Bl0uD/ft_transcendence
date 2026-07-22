@@ -25,7 +25,7 @@ export default function Login() {
       localStorage.setItem('access_token', response.data.access_token);
       
       // 2. Transmettre les vraies données de l'utilisateur au store Zustand
-      loginGlobal(response.data.user);
+      loginGlobal(response.data.user, response.data.access_token);
 
       // 3. Redirection vers le dashboard
       navigate('/dashboard');

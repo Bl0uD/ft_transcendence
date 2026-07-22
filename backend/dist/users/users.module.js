@@ -6,20 +6,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ChatModule = void 0;
+exports.UsersModule = void 0;
 const common_1 = require("@nestjs/common");
-const chat_gateway_1 = require("./chat.gateway");
-const chat_service_1 = require("./chat.service");
+const users_controller_1 = require("./users.controller");
+const users_service_1 = require("./users.service");
 const prisma_module_1 = require("../prisma/prisma.module");
-const auth_module_1 = require("../auth/auth.module");
-let ChatModule = class ChatModule {
+let UsersModule = class UsersModule {
 };
-exports.ChatModule = ChatModule;
-exports.ChatModule = ChatModule = __decorate([
+exports.UsersModule = UsersModule;
+exports.UsersModule = UsersModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, auth_module_1.AuthModule],
-        providers: [chat_gateway_1.ChatGateway, chat_service_1.ChatService],
-        exports: [chat_service_1.ChatService],
+        imports: [prisma_module_1.PrismaModule],
+        controllers: [users_controller_1.UsersController],
+        providers: [users_service_1.UsersService],
+        exports: [users_service_1.UsersService],
     })
-], ChatModule);
-//# sourceMappingURL=chat.module.js.map
+], UsersModule);
+//# sourceMappingURL=users.module.js.map

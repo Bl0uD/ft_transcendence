@@ -1,14 +1,17 @@
 localhost:443 {
-    # 1. Redirection de l'API vers NestJS (sans supprimer le préfixe /api/)
-    # On utilise reverse_proxy directement pour garder l'URL intacte
+    # 1. Servir directement les fichiers uploadés depuis le volume partagé
+    handle /uploads/* {
+        root * /usr/share/caddy
+        file_server
+    }
+
+    # 2. Redirection de l'API vers NestJS
     reverse_proxy /api/* backend:3000
     reverse_proxy /ws/* backend:3000
 
-    # 2. Gestion du Frontend
-    # On redirige tout le reste vers le serveur Vite (frontend:5173)
+    # 3. Gestion du Frontend (Vite)
     reverse_proxy /* frontend:5173
 
-    # Redirection magique pour les routes React (SPA)
-    # Note : Elle doit s'appliquer au frontend, pas à l'API
+    # Redirection SPA pour React
     try_files {path} /index.html
 }

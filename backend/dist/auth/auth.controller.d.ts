@@ -5,10 +5,10 @@ export declare class AuthController {
     register(body: any): Promise<{
         message: string;
         data: {
+            id: number;
             email: string;
             username: string;
             createdAt: Date;
-            id: number;
         };
     }>;
     login(body: any): Promise<{
@@ -18,12 +18,14 @@ export declare class AuthController {
             email: string;
             username: string;
             createdAt: Date;
+            avatar: string | null;
         };
     }>;
     getProfile(req: any): Promise<{
+        id: number;
         email: string;
         username: string;
+        avatar: string | null;
         createdAt: Date;
-        id: number;
     }>;
 }
