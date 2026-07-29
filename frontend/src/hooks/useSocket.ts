@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { getSocket, updateSocketToken } from '../services/socket';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuthStore } from '../store/authStore';
 
 interface UseSocketReturn {
   socket: Socket;

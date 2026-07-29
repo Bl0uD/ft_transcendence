@@ -1,17 +1,26 @@
 localhost:443 {
-    # 1. Servir directement les fichiers uploadés depuis le volume partagé
+    # 1. Fichiers téléversés (Uploads)
     handle /uploads/* {
         root * /usr/share/caddy
         file_server
     }
 
-    # 2. Redirection de l'API vers NestJS
-    reverse_proxy /api/* backend:3000
-    reverse_proxy /ws/* backend:3000
+    # 2. WebSockets Socket.io
+    handle /socket.io/* {
+        reverse_proxy backend:3000
+    }
 
-    # 3. Gestion du Frontend (Vite)
-    reverse_proxy /* frontend:5173
+    # 3. Routes API et WS génériques vers NestJS
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
 
-    # Redirection SPA pour React
-    try_files {path} /index.html
+    handle /ws/* {
+        reverse_proxy backend:3000
+    }
+
+    # 4. Tout le reste va vers le serveur Frontend Vite
+    handle {
+        reverse_proxy frontend:5173
+    }
 }

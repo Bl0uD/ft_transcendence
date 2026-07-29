@@ -11,6 +11,6 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [AuthModule, ChatModule, PrismaModule, UsersModule],
   controllers: [AppController],
-  providers: [AppService, PrismaService, ChatGateway],
+  providers: [AppService, PrismaService],
 })
 export class AppModule {}

@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
+import { ChatView } from './pages/ChatView'; // 1. Import du composant ChatView
 import { useAuthStore } from './store/authStore';
 import api from './api/axios'; 
 
@@ -16,19 +17,19 @@ const ProtectedRoute = () => {
 function App() {
   const { isAuthenticated, user, login, logout } = useAuthStore();
 
-  // 🔄 HYDRATATION DU STORE AU REFRESH (Version 100% simulée sans appel API pour bloquer la boucle)
+  // 🔄 HYDRATATION DU STORE AU REFRESH
   useEffect(() => {
     const fetchProfile = async () => {
-	  const currentToken = useAuthStore.getState().token;
+      const currentToken = useAuthStore.getState().token;
 
-	  console.log("État actuel -> isAuthenticated:", isAuthenticated, "user:", user, "token présent:", !!currentToken);
+      console.log("État actuel -> isAuthenticated:", isAuthenticated, "user:", user, "token présent:", !!currentToken);
 
       if (isAuthenticated && !user && currentToken) {
         try {
           // Appel à la route protégée du Dev A
-		  const response = await api.get('/auth/profile');
+          const response = await api.get('/auth/profile');
 
-		  console.log("Profil récupéré avec succès :", response.data);
+          console.log("Profil récupéré avec succès :", response.data);
 
           login(response.data, currentToken); 
         } catch (error: any) {
@@ -56,6 +57,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
+          {/* 💬 2. Ajout de la route /chat protégée */}
+          <Route path="/chat" element={<ChatView />} />
         </Route>
 
         {/* 🔄 Redirection intelligente des routes inconnues */}

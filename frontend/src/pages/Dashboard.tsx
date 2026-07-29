@@ -14,6 +14,12 @@ export default function Dashboard() {
       
       <div className="flex gap-3 mt-2">
         <button 
+          onClick={() => navigate('/chat')}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-medium transition-colors flex items-center gap-2"
+        >
+          💬 Chat
+        </button>
+        <button 
           onClick={() => navigate('/profile')}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
         >

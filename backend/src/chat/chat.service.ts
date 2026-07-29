@@ -6,14 +6,39 @@ export class ChatService {
   constructor(private prisma: PrismaService) {}
 
   async saveMessage(data: { content: string; roomId: string | number; authorId: number | string }) {
-    const numericChannelId = typeof data.roomId === 'string' ? parseInt(data.roomId, 10) : data.roomId;
     const numericAuthorId = typeof data.authorId === 'string' ? parseInt(data.authorId, 10) : data.authorId;
+    const roomIdentifier = String(data.roomId);
+    const parsedRoomId = parseInt(roomIdentifier, 10);
 
+    // 1. Chercher si le canal existe (par son ID numérique ou par son Nom)
+    let channel = await this.prisma.channel.findFirst({
+      where: {
+        OR: [
+          ...(!isNaN(parsedRoomId) ? [{ id: parsedRoomId }] : []),
+          { name: roomIdentifier },
+        ],
+      },
+    });
+
+    // 2. Si le salon n'existe pas encore en base de données, on le crée automatiquement
+    if (!channel) {
+      channel = await this.prisma.channel.create({
+        data: {
+          name: isNaN(parsedRoomId) ? roomIdentifier : `Salon ${parsedRoomId}`,
+        },
+      });
+    }
+
+    // 3. Enregistrer le message avec le canal garanti
     return this.prisma.message.create({
       data: {
         content: data.content,
-        channelId: numericChannelId,
-        senderId: numericAuthorId,
+        channel: {
+          connect: { id: channel.id },
+        },
+        sender: {
+          connect: { id: numericAuthorId },
+        },
       },
       include: {
         sender: {
@@ -22,4 +47,29 @@ export class ChatService {
       },
     });
   }
+
+  async getChannelMessages(roomId: string | number) {
+  const numericRoomId = typeof roomId === 'string' ? parseInt(roomId, 10) : roomId;
+  ``
+  const channel = await this.prisma.channel.findFirst({
+    where: {
+      OR: [
+        ...(!isNaN(numericRoomId) ? [{ id: numericRoomId }] : []),
+        { name: String(roomId) },
+      ],
+    },
+  });
+
+  if (!channel) return [];
+
+  return this.prisma.message.findMany({
+    where: { channelId: channel.id },
+    include: {
+      sender: {
+        select: { id: true, username: true, avatar: true },
+      },
+    },
+    orderBy: { createdAt: 'asc' }, // Du plus ancien au plus récent
+  });
+}
 }

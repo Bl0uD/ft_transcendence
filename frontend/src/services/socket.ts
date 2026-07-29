@@ -10,11 +10,11 @@ export const getSocket = (): Socket => {
     // Initialisation vers le namespace /chat (via Caddy)
     socket = io('/chat', {
       auth: { token },
-      autoConnect: false, // Prévient la connexion avant que le composant Chat ne soit monté
-      transports: ['websocket'], // Force WebSocket pour éviter le polling initial
-	  reconnection: true,             // Tente de se reconnecter automatiquement
-      reconnectionAttempts: 5,        // Nombre d'essais en cas de coupure réseau
-      reconnectionDelay: 1000,        // Attente initiale (1s)
+      autoConnect: false,					// Prévient la connexion avant que le composant Chat ne soit monté
+      transports: ['polling', 'websocket'],	// Force WebSocket pour éviter le polling initial
+	  reconnection: true,            		// Tente de se reconnecter automatiquement
+      reconnectionAttempts: 5,        		// Nombre d'essais en cas de coupure réseau
+      reconnectionDelay: 1000,        		// Attente initiale (1s)
     });
   }
   return socket;
