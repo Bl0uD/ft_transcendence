@@ -1,10 +1,10 @@
-import { Controller, Post, Body, Get, Request, UseGuards } from '@nestjs/common'; // Ajout de Get, Request, UseGuards
+import { Controller, Post, Body, Get, Request, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
-@Controller('api/auth')
+@Controller('auth') // <-- Corrigé : évite le doublon /api/api/auth
 export class AuthController {
-  
+
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
@@ -20,8 +20,7 @@ export class AuthController {
   async login(@Body() body: any) {
     return this.authService.login(body);
   }
-  
-  // Ta nouvelle route
+
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {

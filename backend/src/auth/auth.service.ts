@@ -52,7 +52,7 @@ export class AuthService {
       where: { email: body.email },
     });
 
-    if (!user) throw new UnauthorizedException('Email ou mot de passe incorrect');
+    if (!user || !user.password) throw new UnauthorizedException('Email ou mot de passe incorrect');
 
     const isMatch = await bcrypt.compare(body.password, user.password);
     if (!isMatch) throw new UnauthorizedException('Email ou mot de passe incorrect');

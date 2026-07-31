@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,7 +19,7 @@ enum ChannelType {
   PUBLIC
   PRIVATE
   PROTECTED // Nécessite un mot de passe
-  DIRECT // Pour les messages privés 1-vs-1
+  DIRECT    // Pour les messages privés 1-vs-1 et le chat IA
 }
 
 enum ChannelRole {
@@ -36,12 +30,11 @@ enum ChannelRole {
 
 // --- MODÈLES ---
 
-// Modèle User (À fusionner avec ton existant)
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   username  String   @unique
-  password  String
+  password  String?  // Rendu optionnel pour le Bot IA et OAuth 42
   avatar    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,7 +48,6 @@ model User {
   messages           Message[]
 }
 
-// Modèle pour les Amis et les Blocages
 model Friendship {
   id        Int              @id @default(autoincrement())
   status    FriendshipStatus @default(PENDING)
@@ -68,31 +60,29 @@ model Friendship {
   addresseeId Int
   addressee   User @relation("ReceivedRequests", fields: [addresseeId], references: [id], onDelete: Cascade)
 
-  // Empêche d'avoir plusieurs requêtes entre les deux mêmes utilisateurs
   @@unique([requesterId, addresseeId])
 }
 
-// Modèle pour les Salons de discussion
 model Channel {
   id        Int         @id @default(autoincrement())
-  name      String? // Optionnel car les DM (Direct Messages) n'ont pas forcément de nom
+  name      String?     // Nom du salon (ex: "ai-chat-1" ou "Salon Général")
   type      ChannelType @default(PUBLIC)
-  password  String? // Hashé, uniquement si type == PROTECTED
+  password  String?     // Hashé si type == PROTECTED
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
   members  ChannelMember[]
   messages Message[]
+
+  @@index([name]) // Accélère la recherche dans saveMessage()
 }
 
-// Table de liaison entre Utilisateurs et Salons
 model ChannelMember {
   id   Int         @id @default(autoincrement())
   role ChannelRole @default(MEMBER)
 
-  // Gestion des sanctions
   isBanned   Boolean   @default(false)
-  mutedUntil DateTime? // S'il est non-null et dans le futur, l'utilisateur est muet
+  mutedUntil DateTime? // Si dans le futur, l'utilisateur est muet
 
   joinedAt DateTime @default(now())
 
@@ -102,11 +92,9 @@ model ChannelMember {
   channelId Int
   channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
-  // Un utilisateur ne peut être membre qu'une seule fois d'un même salon
   @@unique([userId, channelId])
 }
 
-// Modèle pour les Messages
 model Message {
   id        Int      @id @default(autoincrement())
   content   String

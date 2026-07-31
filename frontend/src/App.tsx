@@ -4,7 +4,9 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Register from './pages/Register';
-import { ChatView } from './pages/ChatView'; // 1. Import du composant ChatView
+import { ChatView } from './pages/ChatView';
+import { AiChatView } from './pages/AiChatView'; // 🤖 Import de la vue Assistant IA
+import { SocialView } from './pages/SocialView'; // 👥 Import de la vue Sociale (Amis)
 import { useAuthStore } from './store/authStore';
 import api from './api/axios'; 
 
@@ -57,8 +59,10 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
-          {/* 💬 2. Ajout de la route /chat protégée */}
           <Route path="/chat" element={<ChatView />} />
+          {/* 🤖 Nouveautés Semaine 4 */}
+          <Route path="/ai" element={<AiChatView />} />
+          <Route path="/social" element={<SocialView />} />
         </Route>
 
         {/* 🔄 Redirection intelligente des routes inconnues */}
