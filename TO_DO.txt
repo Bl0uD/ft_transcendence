@@ -1,0 +1,2 @@
+Semaine 4 backend : tester memoire IA
+faire un volet ia hybride avec api gemini pro et petite ia locale, essayer de faire en sorte que lia locale puisse communiquer avec le backend (????) pour pouvoir lui demander denvoyer un message à tel ou tel user, quelle cree le salon, envoie le message et puisse redirgier sur la bonne page.

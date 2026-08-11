@@ -12,10 +12,7 @@ export class AiService implements OnModuleInit {
   private readonly ollamaUrl = 'http://ai:11434/api/chat';
   private readonly systemPrompt = "Tu es l'assistant de ft_transcendence. Réponds de manière concise et amicale.";
 
-  // Identifiant dynamique du Bot IA récupéré en BDD au démarrage
   private aiBotId: number;
-
-  // Limites pour ne pas saturer le contexte de Llama 3
   private readonly MAX_MESSAGES = 10;
   private readonly MAX_TOTAL_CHARS = 6000;
 
@@ -25,16 +22,10 @@ export class AiService implements OnModuleInit {
     private readonly prisma: PrismaService,
   ) {}
 
-  /**
-   * S'exécute automatiquement au lancement du module NestJS
-   */
   async onModuleInit() {
     await this.ensureAiBotExists();
   }
 
-  /**
-   * Vérifie ou crée l'utilisateur système 'Bot IA' dans PostgreSQL
-   */
   private async ensureAiBotExists() {
     const BOT_USERNAME = 'Bot IA';
 
@@ -61,8 +52,8 @@ export class AiService implements OnModuleInit {
     const lastUserMessage = userMessages[userMessages.length - 1];
 
     try {
-      // 1. Sauvegarder le message entrant de l'utilisateur dans PostgreSQL
-      if (lastUserMessage && lastUserMessage.role === 'user') {
+      // 1. Sauvegarder uniquement le dernier message utilisateur s'il existe
+      if (lastUserMessage && lastUserMessage.role === 'user' && lastUserMessage.content.trim()) {
         await this.chatService.saveMessage({
           content: lastUserMessage.content,
           roomId: roomId,
@@ -70,15 +61,27 @@ export class AiService implements OnModuleInit {
         });
       }
 
-      // 2. Limiter la taille de l'historique pour Ollama
-      const truncatedHistory = this.limitContextWindow(userMessages);
+      // 2. Charger les messages depuis Prisma
+      const dbMessages = await this.chatService.getMessagesByRoomId(roomId, this.MAX_MESSAGES);
+
+      // 3. Mapping ultra-solide du rôle pour Ollama (vérification par senderId ET username)
+      const formattedHistory: ChatMessageDto[] = dbMessages.map((msg: any) => {
+        const isBot = msg.senderId === this.aiBotId || msg.sender?.username === 'Bot IA';
+        return {
+          role: isBot ? 'assistant' : 'user',
+          content: msg.content,
+        };
+      });
+
+      // 4. Limiter le contexte
+      const truncatedHistory = this.limitContextWindow(formattedHistory);
 
       const fullConversation = [
         { role: 'system', content: this.systemPrompt },
         ...truncatedHistory,
       ];
 
-      // 3. Appel HTTP en streaming vers Ollama
+      // 5. Envoi à Ollama
       const response = await firstValueFrom(
         this.httpService.post(
           this.ollamaUrl,
@@ -91,7 +94,6 @@ export class AiService implements OnModuleInit {
         ),
       );
 
-      // En-têtes HTTP SSE (Server-Sent Events)
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
@@ -99,11 +101,10 @@ export class AiService implements OnModuleInit {
       let buffer = '';
       let fullAiResponse = '';
 
-      // 4. Traitement du flux réseau
       response.data.on('data', async (chunk: Buffer) => {
         buffer += chunk.toString();
         const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Conserver la dernière ligne incomplet dans le tampon
+        buffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmed = line.trim();
@@ -116,28 +117,28 @@ export class AiService implements OnModuleInit {
               const content = parsed.message.content;
               fullAiResponse += content;
 
-              // Envoi du fragment au frontend
               res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
             }
 
             if (parsed.done) {
-              // 5. Génération terminée : sauvegarde de la réponse globale dans PostgreSQL
-              await this.chatService.saveMessage({
-                content: fullAiResponse,
-                roomId: roomId,
-                authorId: this.aiBotId,
-              });
+              // 6. Sauvegarder la réponse de l'IA une fois terminée
+              if (fullAiResponse.trim()) {
+                await this.chatService.saveMessage({
+                  content: fullAiResponse,
+                  roomId: roomId,
+                  authorId: this.aiBotId,
+                });
+              }
 
               res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
               res.end();
             }
           } catch {
-            // Ignorer les fragments JSON incomplets
+            // Fragment partiel ignoré
           }
         }
       });
 
-      // Gestion des erreurs pendant la lecture du flux
       response.data.on('error', (err: Error) => {
         this.logger.error('Erreur durant le streaming', err);
         if (!res.writableEnded) {
@@ -146,7 +147,6 @@ export class AiService implements OnModuleInit {
         }
       });
 
-      // Arrêter la requête vers Ollama si le client ferme sa connexion
       res.on('close', () => {
         response.data.destroy();
       });
@@ -157,9 +157,6 @@ export class AiService implements OnModuleInit {
     }
   }
 
-  /**
-   * Conserve uniquement les messages récents sous une limite de caractères
-   */
   private limitContextWindow(messages: ChatMessageDto[]): ChatMessageDto[] {
     const recent = messages.slice(-this.MAX_MESSAGES);
     const filtered: ChatMessageDto[] = [];

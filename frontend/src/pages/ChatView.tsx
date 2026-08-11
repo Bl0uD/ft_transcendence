@@ -26,6 +26,14 @@ export const ChatView: React.FC = () => {
   // Anti-double-clic / Anti-double-submit
   const [isSending, setIsSending] = useState(false);
 
+  // 1. Référence pour l'auto-scroll
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 2. Scroll automatique vers le bas à chaque nouveau message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   useEffect(() => {
     if (!isConnected || !socket) return;
 
@@ -177,6 +185,9 @@ export const ChatView: React.FC = () => {
               );
             })
           )}
+
+          {/* 3. Ancre invisible pour forcer le scroll en bas */}
+          <div ref={messagesEndRef} />
         </div>
 
         <div className="p-4 bg-white border-t">

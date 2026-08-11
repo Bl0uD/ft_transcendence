@@ -1,18 +1,21 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// import { ChatService } from './chat.service'; // Décommente si tu as un service
+import { ChatService } from './chat.service';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
 export class ChatController {
-  // constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) {}
 
   @Get('channels/:channelId/messages')
   async getMessages(@Param('channelId') channelId: string) {
-    // TODO: Appeler ton service pour récupérer les vrais messages de la BDD
-    // return this.chatService.getMessages(channelId);
+    // 🟢 On appelle la BDD
+    const rawMessages = await this.chatService.getChannelMessages(channelId);
     
-    // Pour l'instant, on renvoie un tableau vide pour stopper l'erreur 404 du frontend
-    return []; 
+    // 🟢 On formate pour React ({ role: 'user' | 'ai', content })
+    return rawMessages.map((msg) => ({
+      role: msg.sender?.username === 'Bot IA' ? 'ai' : 'user',
+      content: msg.content,
+    }));
   }
 }

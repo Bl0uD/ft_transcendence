@@ -10,7 +10,7 @@ export class ChatService {
     const roomIdentifier = String(data.roomId);
     const parsedRoomId = parseInt(roomIdentifier, 10);
 
-    // 1. Chercher si le canal existe (par son ID numérique ou par son Nom)
+    // 1. Chercher si le canal existe
     let channel = await this.prisma.channel.findFirst({
       where: {
         OR: [
@@ -20,7 +20,7 @@ export class ChatService {
       },
     });
 
-    // 2. Si le salon n'existe pas encore en base de données, on le crée automatiquement
+    // 2. Si le salon n'existe pas, on le crée
     if (!channel) {
       channel = await this.prisma.channel.create({
         data: {
@@ -29,7 +29,7 @@ export class ChatService {
       });
     }
 
-    // 3. Enregistrer le message avec le canal garanti
+    // 3. Enregistrer le message
     return this.prisma.message.create({
       data: {
         content: data.content,
@@ -49,27 +49,45 @@ export class ChatService {
   }
 
   async getChannelMessages(roomId: string | number) {
-  const numericRoomId = typeof roomId === 'string' ? parseInt(roomId, 10) : roomId;
-  ``
-  const channel = await this.prisma.channel.findFirst({
-    where: {
-      OR: [
-        ...(!isNaN(numericRoomId) ? [{ id: numericRoomId }] : []),
-        { name: String(roomId) },
-      ],
-    },
-  });
+    const numericRoomId = typeof roomId === 'string' ? parseInt(roomId, 10) : roomId;
 
-  if (!channel) return [];
-
-  return this.prisma.message.findMany({
-    where: { channelId: channel.id },
-    include: {
-      sender: {
-        select: { id: true, username: true, avatar: true },
+    const channel = await this.prisma.channel.findFirst({
+      where: {
+        OR: [
+          ...(!isNaN(numericRoomId) ? [{ id: numericRoomId }] : []),
+          { name: String(roomId) },
+        ],
       },
-    },
-    orderBy: { createdAt: 'asc' }, // Du plus ancien au plus récent
-  });
-}
+    });
+
+    if (!channel) return [];
+
+    return this.prisma.message.findMany({
+      where: { channelId: channel.id },
+      include: {
+        sender: {
+          select: { id: true, username: true, avatar: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' }, // Chronologique
+    });
+  }
+
+  // 🟢 FIX MÉMOIRE IA : Utilisation de sender au lieu de author
+  async getMessagesByRoomId(roomId: string, limit: number = 20) {
+    const channel = await this.prisma.channel.findFirst({
+      where: { name: roomId },
+    });
+
+    if (!channel) return [];
+
+    return this.prisma.message.findMany({
+      where: { channelId: channel.id },
+      take: limit,
+      orderBy: { createdAt: 'asc' },
+      include: {
+        sender: true,
+      },
+    });
+  }
 }
