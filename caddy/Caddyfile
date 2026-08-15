@@ -15,11 +15,16 @@ localhost:443 {
         reverse_proxy backend:3000
     }
 
+    # 4. Routes d'authentification vers NestJS (NOUVEAU)
+    handle /auth/* {
+        reverse_proxy backend:3000
+    }
+
     handle /ws/* {
         reverse_proxy backend:3000
     }
 
-    # 4. Tout le reste va vers le serveur Frontend Vite
+    # 5. Tout le reste va vers le serveur Frontend Vite
     handle {
         reverse_proxy frontend:5173
     }

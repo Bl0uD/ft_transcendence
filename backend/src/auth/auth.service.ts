@@ -3,7 +3,7 @@ import {
   ConflictException, 
   InternalServerErrorException, 
   UnauthorizedException, 
-  NotFoundException // 👈 Ajouté ici
+  NotFoundException 
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -47,26 +47,53 @@ export class AuthService {
     }
   }
 
-  async login(body: any) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: body.email },
-    });
+  // Modifie pour accepter soit un body (login manuel), soit un user (login 42)
+  async login(bodyOrUser: any) {
+    let user;
 
-    if (!user || !user.password) throw new UnauthorizedException('Email ou mot de passe incorrect');
+    // CAS 1 : Login manuel
+    if (bodyOrUser.email && bodyOrUser.password) {
+      user = await this.prisma.user.findUnique({
+        where: { email: bodyOrUser.email },
+      });
 
-    const isMatch = await bcrypt.compare(body.password, user.password);
-    if (!isMatch) throw new UnauthorizedException('Email ou mot de passe incorrect');
+      if (!user || !user.password) {
+        throw new UnauthorizedException('Email ou mot de passe incorrect');
+      }
 
-    const payload = { sub: user.id, email: user.email, username: user.username, avatar: user.avatar };
+      const isMatch = await bcrypt.compare(bodyOrUser.password, user.password);
+      if (!isMatch) {
+        throw new UnauthorizedException('Email ou mot de passe incorrect');
+      }
+    } 
+    // CAS 2 : Login API 42
+    else if (bodyOrUser.id) {
+      user = bodyOrUser;
+    } else {
+      throw new UnauthorizedException('Données de connexion invalides');
+    }
+
+    // 🔑 GENERATION DU JWT (Gestion 2FA incluse)
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      username: user.username, 
+      avatar: user.avatar,
+      // Si la 2FA est activee, il n'est pas encore authentifie 2FA. 
+      // Sinon, il l'est d'office.
+      isTwoFactorAuthenticated: !user.isTwoFactorEnabled 
+    };
+
     return {
       access_token: this.jwtService.sign(payload),
-	  user: {
-      	id: user.id,
-      	email: user.email,
-      	username: user.username,
-      	createdAt: user.createdAt,
-		avatar: user.avatar,
-	  }
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        createdAt: user.createdAt,
+        avatar: user.avatar,
+        isTwoFactorEnabled: user.isTwoFactorEnabled,
+      }
     };
   }
 
@@ -78,7 +105,8 @@ export class AuthService {
         email: true,
         username: true,
         createdAt: true,
-		avatar: true,
+        avatar: true,
+        isTwoFactorEnabled: true,
       },
     });
 
@@ -87,5 +115,83 @@ export class AuthService {
     }
 
     return user;
+  }
+
+async validateUser(profile: { email: string, username: string, avatar: string, fortyTwoId: string }) {
+    let user = await this.prisma.user.findUnique({ 
+      where: { fortyTwoId: profile.fortyTwoId } 
+    });
+
+    if (user) {
+      // 👈 On met à jour l'avatar si l'ancien est celui par défaut ou vide
+      return this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          avatar: (!user.avatar || user.avatar === '/assets/default-avatar.png') ? profile.avatar : user.avatar,
+        }
+      });
+    }
+
+    user = await this.prisma.user.findUnique({ 
+      where: { email: profile.email } 
+    });
+
+    if (user) {
+      return this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          fortyTwoId: profile.fortyTwoId,
+          avatar: (!user.avatar || user.avatar === '/assets/default-avatar.png') ? profile.avatar : user.avatar,
+        }
+      });
+    }
+
+    let uniqueUsername = profile.username;
+    let usernameExists = await this.prisma.user.findUnique({ where: { username: uniqueUsername } });
+    let counter = 1;
+    
+    while (usernameExists) {
+      uniqueUsername = `${profile.username}_${counter}`;
+      usernameExists = await this.prisma.user.findUnique({ where: { username: uniqueUsername } });
+      counter++;
+    }
+
+    return this.prisma.user.create({
+      data: {
+        email: profile.email,
+        username: uniqueUsername,
+        nickname: profile.username,
+        avatar: profile.avatar,
+        fortyTwoId: profile.fortyTwoId,
+      }
+    });
+  }
+
+  // --- NOUVEAU : FONCTIONS 2FA ---
+
+  async enableTwoFactor(userId: number) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { isTwoFactorEnabled: true },
+    });
+  }
+
+  async loginWith2fa(userId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+    
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      username: user.username, 
+      isTwoFactorAuthenticated: true 
+    };
+    
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
   }
 }

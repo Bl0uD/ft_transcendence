@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import api from '../api/axios'; // Ton instance Axios configurée
+import api from '../api/axios';
 
 export interface User {
   id: number;
@@ -18,16 +18,20 @@ interface SocialState {
   friends: User[];
   pendingRequests: FriendRequest[];
   blockedUsers: User[];
+  friendsStatus: Record<number, 'ONLINE' | 'OFFLINE'>; // <-- AJOUT (Présence)
+  
   fetchFriends: () => Promise<void>;
   fetchPendingRequests: () => Promise<void>;
   acceptRequest: (requestId: number) => Promise<void>;
   blockUser: (targetUserId: number) => Promise<void>;
+  updateFriendStatus: (userId: number, status: 'ONLINE' | 'OFFLINE') => void; // <-- AJOUT
 }
 
 export const useSocialStore = create<SocialState>((set, get) => ({
   friends: [],
   pendingRequests: [],
   blockedUsers: [],
+  friendsStatus: {}, // <-- INITIALISATION
 
   fetchFriends: async () => {
     const res = await api.get<User[]>('/api/friends');
@@ -41,7 +45,6 @@ export const useSocialStore = create<SocialState>((set, get) => ({
 
   acceptRequest: async (requestId: number) => {
     await api.put('/api/friends/accept', { requestId });
-    // Rafraîchissement automatique requis par le backend
     await get().fetchPendingRequests();
     await get().fetchFriends();
   },
@@ -50,4 +53,10 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     await api.post('/api/friends/block', { targetUserId });
     await get().fetchFriends();
   },
+
+  // <-- AJOUT : Met à jour uniquement l'état de l'utilisateur ciblé
+  updateFriendStatus: (userId, status) => 
+    set((state) => ({
+      friendsStatus: { ...state.friendsStatus, [userId]: status }
+    })),
 }));

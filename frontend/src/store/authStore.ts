@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-// 1. On définit la structure de nos données (TypeScript)
 interface User {
   id: number;
   username: string;
@@ -12,36 +11,38 @@ interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   user: User | null;
+  requires2FA: boolean; // <-- AJOUT
+  
   login: (userData: User, token: string) => void;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
   refreshToken: () => Promise<string | null>;
+  setRequires2FA: (status: boolean) => void; // <-- AJOUT
 }
 
-// 2. On crée le store global (on ajoute `get` en deuxième paramètre)
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: !!localStorage.getItem('access_token'),
   token: localStorage.getItem('access_token'),
   user: null,
+  requires2FA: false, // <-- INITIALISATION
 
-  // Action appelée lors d'une connexion réussie
   login: (userData, token) => {
     localStorage.setItem('access_token', token);
-    set({ isAuthenticated: true, user: userData, token });
-  }, // <-- VIRGULE AJOUTÉE ICI
-
-  // Action appelée lors de la déconnexion
-  logout: () => {
-    localStorage.removeItem('access_token');
-    set({ isAuthenticated: false, user: null, token: null });
+    set({ isAuthenticated: true, user: userData, token, requires2FA: false }); // Reset 2FA au login
   },
 
-  // Action appelée après un PUT /api/users/profile réussi
+  logout: () => {
+    localStorage.removeItem('access_token');
+    set({ isAuthenticated: false, user: null, token: null, requires2FA: false }); // Reset 2FA au logout
+  },
+
   updateUser: (updatedData) => set((state) => ({
     user: state.user ? { ...state.user, ...updatedData } : null
   })),
 
-  // Action pour rafraîchir le token
+  // <-- AJOUT : Permet à Axios de déclencher l'interface 2FA
+  setRequires2FA: (status) => set({ requires2FA: status }),
+
   refreshToken: async () => {
     try {
       console.warn("Refresh token non implémenté. Déconnexion forcée.");

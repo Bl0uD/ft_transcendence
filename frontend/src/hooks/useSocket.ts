@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { getSocket, updateSocketToken } from '../services/socket';
 import { useAuthStore } from '../store/authStore';
+import { useSocialStore } from '../store/socialStore'; // <-- AJOUT
 
 interface UseSocketReturn {
   socket: Socket;
@@ -14,12 +15,11 @@ export const useSocket = (): UseSocketReturn => {
   const [isConnected, setIsConnected] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Méthodes issues de votre store Zustand
   const refreshToken = useAuthStore((state) => state.refreshToken);
   const logout = useAuthStore((state) => state.logout);
+  const updateFriendStatus = useSocialStore((state) => state.updateFriendStatus); // <-- AJOUT
   const navigate = useNavigate();
   
-  // Récupération du singleton
   const socket = getSocket();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export const useSocket = (): UseSocketReturn => {
           
           if (newToken) {
             updateSocketToken(newToken);
-            socket.connect(); // Relance la connexion avec le nouveau token
+            socket.connect(); 
           } else {
             logout();
             navigate('/login');
@@ -58,16 +58,29 @@ export const useSocket = (): UseSocketReturn => {
       }
     };
 
+    // <-- AJOUT SEMAINE 5 : Gestion de la présence
+    const handleUserConnected = (data: { userId: number, status: 'ONLINE' }) => {
+      updateFriendStatus(data.userId, data.status);
+    };
+
+    const handleUserDisconnected = (data: { userId: number, status: 'OFFLINE' }) => {
+      updateFriendStatus(data.userId, data.status);
+    };
+
     // 1. Souscription aux événements système
     socket.on('connect', handleConnect);
     socket.on('connect_error', handleConnectError);
     socket.on('disconnect', handleDisconnect);
+    
+    // Souscription aux événements de présence
+    socket.on('user_connected', handleUserConnected);
+    socket.on('user_disconnected', handleUserDisconnected);
 
     // 2. Initialisation : connecter si ce n'est pas déjà fait
     if (!socket.connected) {
       socket.connect();
     } else {
-      setIsConnected(true); // Gère le cas où le socket est déjà connecté avant le montage
+      setIsConnected(true); 
     }
 
     // 3. Nettoyage strict (Sécurité mémoire)
@@ -75,8 +88,12 @@ export const useSocket = (): UseSocketReturn => {
       socket.off('connect', handleConnect);
       socket.off('connect_error', handleConnectError);
       socket.off('disconnect', handleDisconnect);
+      
+      // Nettoyage de la présence
+      socket.off('user_connected', handleUserConnected);
+      socket.off('user_disconnected', handleUserDisconnected);
     };
-  }, [socket, refreshToken, logout, navigate]);
+  }, [socket, refreshToken, logout, navigate, updateFriendStatus]); // <-- MAJ des dépendances
 
   return { socket, isConnected, authError };
 };

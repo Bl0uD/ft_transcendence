@@ -6,10 +6,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { UsersService } from './users.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 
 @Controller('users')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtTwoFactorGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

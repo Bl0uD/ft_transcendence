@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useAuthStore } from '../store/authStore'; // <-- AJOUT POUR LA 2FA
 
 // Création de l'instance alignée sur ton proxy Caddy
 const api = axios.create({
@@ -10,14 +11,11 @@ const api = axios.create({
 
 /**
  * 1. INTERCEPTEUR DE REQUÊTE
- * S'exécute AVANT que la requête ne parte vers NestJS
  */
 api.interceptors.request.use(
   (config) => {
-    // Récupération du token stocké lors du login
     const token = localStorage.getItem('access_token');
     
-    // Si le token existe, on l'ajoute dans les headers HTTP
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,33 +23,38 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    // Gestion des erreurs d'envoi
     return Promise.reject(error);
   }
 );
 
 /**
  * 2. INTERCEPTEUR DE RÉPONSE
- * S'exécute Dès que le Backend renvoie un résultat (Succès ou Erreur)
  */
 api.interceptors.response.use(
   (response) => {
-    // Si la requête est un succès (2xx), on laisse passer la réponse normalement
     return response;
   },
   (error) => {
-    // Si le Backend renvoie une erreur 401 (Token expiré, invalide, ou absent sur route protégée)
+    // Si le Backend renvoie une erreur 401
     if (error.response && error.response.status === 401) {
-      console.warn('🔴 Session expirée ou invalide. Redirection vers le login.');
-      
-      // Sécurité : Nettoyage du localStorage pour éviter les boucles d'erreur
-      localStorage.removeItem('acccess_token');
-      
-      // Redirection brutale mais efficace vers la page de login
-      window.location.href = '/login';
+      const message = error.response.data?.message;
+
+      // <-- AJOUT SEMAINE 5 : Gestion spécifique de la 2FA
+      if (message === "2FA validation required") {
+        console.warn('🟡 2FA requise. Bascule vers le formulaire OTP.');
+        useAuthStore.getState().setRequires2FA(true);
+      } else {
+        // Vrai 401 (Token expiré, invalide, ou absent sur route protégée)
+        console.warn('🔴 Session expirée ou invalide. Redirection vers le login.');
+        
+        // Sécurité : Nettoyage du localStorage (faute de frappe 'acccess_token' corrigée)
+        localStorage.removeItem('access_token');
+        
+        // Redirection brutale mais efficace vers la page de login
+        window.location.href = '/login';
+      }
     }
     
-    // On propage l'erreur pour que le composant (ex: Login.tsx) puisse l'afficher si besoin
     return Promise.reject(error);
   }
 );

@@ -47,6 +47,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.activeConnections.set(payload.sub, client.id);
 
       console.log(`[ChatGateway] Connexion réussie. User ID: ${payload.sub}`);
+
+      // --- NOUVEAU : SYSTÈME DE PRÉSENCE ---
+      // Optionnel : tu pourrais ici mettre à jour le statut ONLINE dans Prisma
+      
+      // Notifie tous les clients qu'un utilisateur vient de se connecter
+      this.server.emit('user_connected', { userId: payload.sub, status: 'ONLINE' });
+
     } catch (error) {
       console.log(`[ChatGateway] Connexion rejetée : ${error.message}`);
       client.disconnect();
@@ -58,10 +65,15 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (userId) {
       this.activeConnections.delete(userId);
       console.log(`[ChatGateway] Déconnexion propre. User ID ${userId} retiré.`);
+
+      // --- NOUVEAU : SYSTÈME DE PRÉSENCE ---
+      // Optionnel : tu pourrais ici mettre à jour le statut OFFLINE dans Prisma
+
+      // Notifie tous les clients qu'un utilisateur vient de se déconnecter
+      this.server.emit('user_disconnected', { userId: userId, status: 'OFFLINE' });
     }
   }
 
-  // ✅ 1. 'async' ajouté pour que le 'await' et le load_history fonctionnent
   @SubscribeMessage('joinChannel')
   async handleJoinChannel(
     @MessageBody() data: any,

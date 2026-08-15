@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from '../api/axios';
 import { useAuthStore } from '../store/authStore';
+import TwoFactorSetup from '../components/TwoFactorSetup';
 
 export default function Profile() {
   const user = useAuthStore((state) => state.user);
@@ -8,10 +9,10 @@ export default function Profile() {
   const updateUser = useAuthStore((state) => state.updateUser);
   
   const [username, setUsername] = useState(user?.username || '');
+  const [nickname, setNickname] = useState(user?.nickname || ''); // 👈 FIX : Ajout du state nickname
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
   
-  // 👈 FIX : Déclaration du state manquant pour la visibilité du mot de passe
   const [showPassword, setShowPassword] = useState(false);
   
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -21,12 +22,15 @@ export default function Profile() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Synchroniser la preview si le user change
+  // Synchroniser la preview et le nickname si le user change
   useEffect(() => {
     if (user?.avatar) {
       setPreviewUrl(user.avatar);
     }
-  }, [user?.avatar]);
+    if (user?.nickname) {
+      setNickname(user.nickname);
+    }
+  }, [user?.avatar, user?.nickname]);
 
   // Nettoyage de l'URL blob
   useEffect(() => {
@@ -62,6 +66,11 @@ export default function Profile() {
     try {
       const formData = new FormData();
       formData.append('username', username);
+
+      // Le nickname est optionnel
+      if (nickname) {
+        formData.append('nickname', nickname);
+      }
 
       if (email) {
         formData.append('email', email);
@@ -156,6 +165,21 @@ export default function Profile() {
             />
           </div>
 
+          {/* Nickname Field (Optionnel) */}
+          <div>
+            <label htmlFor="nickname" className="block text-sm font-medium text-slate-300 mb-1">
+              New Nickname (Optionnel)
+            </label>
+            <input
+              id="nickname"
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={20}
+            />
+          </div>
+
           {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
@@ -174,7 +198,7 @@ export default function Profile() {
           {/* Password Field with Eye Toggle */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1">
-              New Password
+              New Password (laisser vide pour ne pas changer)
             </label>
             <div className="relative flex items-center">
               <input
@@ -215,6 +239,7 @@ export default function Profile() {
             {status.type === 'loading' ? 'Enregistrement...' : 'Enregistrer les modifications'}
           </button>
         </form>
+		<TwoFactorSetup />
       </div>
 
       <button 

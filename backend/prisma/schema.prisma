@@ -28,14 +28,35 @@ enum ChannelRole {
   MEMBER
 }
 
+// Nouveau : Gère l'état de présence de l'utilisateur via WebSockets
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  IN_GAME
+}
+
 // --- MODÈLES ---
 
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
   username  String   @unique
+  nickname  String?  // NOUVEAU : Pseudonyme d'affichage libre, sans contrainte d'unicité
   password  String?  // Rendu optionnel pour le Bot IA et OAuth 42
-  avatar    String?
+  
+  // NOUVEAU : L'avatar n'est plus optionnel (plus de '?'), il a une image par défaut
+  avatar    String   @default("/assets/default-avatar.png")
+
+  // --- NOUVEAU : OAUTH2 API 42 ---
+  fortyTwoId String?  @unique 
+
+  // --- NOUVEAU : DOUBLE AUTHENTIFICATION (2FA) ---
+  twoFactorSecret      String?  
+  isTwoFactorEnabled   Boolean  @default(false) 
+
+  // --- NOUVEAU : STATUT DE PRÉSENCE ---
+  status    UserStatus @default(OFFLINE)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

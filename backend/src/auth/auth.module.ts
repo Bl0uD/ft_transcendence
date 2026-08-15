@@ -5,6 +5,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JwtModule } from '@nestjs/jwt'; 
 import { PassportModule } from '@nestjs/passport'; 
 import { JwtStrategy } from './jwt.strategy';      
+import { FortyTwoStrategy } from './42auth/forty-two.strategy';
+import { TwoFactorAuthService } from './2fa/two-factor-auth.service';
+
 
 @Global()
 @Module({
@@ -16,7 +19,13 @@ import { JwtStrategy } from './jwt.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PrismaService, JwtStrategy],
+  providers: [
+    AuthService, 
+    PrismaService, 
+    JwtStrategy, 
+    FortyTwoStrategy,
+	TwoFactorAuthService
+  ], 
   exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

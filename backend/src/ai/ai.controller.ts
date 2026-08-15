@@ -2,11 +2,11 @@ import { Controller, Post, Body, UseGuards, Res, Req, HttpCode, HttpStatus } fro
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AiService } from './ai.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 import { ChatPromptDto } from './dto/chat-prompt.dto';
 
 @Controller('ai')
-@UseGuards(JwtAuthGuard, ThrottlerGuard)
+@UseGuards(JwtTwoFactorGuard, ThrottlerGuard)
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 

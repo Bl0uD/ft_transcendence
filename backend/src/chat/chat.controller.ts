@@ -1,9 +1,9 @@
 import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 import { ChatService } from './chat.service';
 
 @Controller('chat')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtTwoFactorGuard)
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 

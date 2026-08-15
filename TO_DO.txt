@@ -1,2 +1,13 @@
 Semaine 4 backend : tester memoire IA
 faire un volet ia hybride avec api gemini pro et petite ia locale, essayer de faire en sorte que lia locale puisse communiquer avec le backend (????) pour pouvoir lui demander denvoyer un message à tel ou tel user, quelle cree le salon, envoie le message et puisse redirgier sur la bonne page.
+supprimer le prompt user pas utilise apres un refresh dans /ai
+mettre un timeout pour pas que lia reflechisse trop longtemps
+mettre une limite sur le context dsonne a lia a chaque prompt, sinon elle refelchit indefiniment
+
+
+mettre luser qui parle a droite dans /chat 
+rajouter la pp a cote de chaque user dans le /chat
+
+✅rajouter dans prisma un nickname qui a la difference de username ne sera pas unique
+
+remplir le backemd/.env avec les infos de lapi 42 https://profile.intra.42.fr/oauth/applications/new
