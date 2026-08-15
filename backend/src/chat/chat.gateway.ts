@@ -84,11 +84,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (rawRoomId !== undefined && rawRoomId !== null) {
       const roomIdStr = String(rawRoomId);
       
-      // Rejoindre le salon Socket.io
+      // 🟢 1. On vérifie ou on crée le salon en base de données
+      const { isNewChannel } = await this.chatService.findOrCreateChannel(rawRoomId);
+
+      // 2. Rejoindre le salon Socket.io
       client.join(roomIdStr);
       console.log(`[ChatGateway] Socket ${client.id} a rejoint le canal : ${roomIdStr}`);
 
-      // Récupération et envoi de l'historique
+      // 🟢 3. Si c'est un nouveau salon, on avertit UNIQUEMENT CE CLIENT
+      if (isNewChannel) {
+        client.emit('rooms_updated'); // Utilisation de client.emit et non this.server.emit
+      }
+
+      // 4. Récupération et envoi de l'historique
       const history = await this.chatService.getChannelMessages(rawRoomId);
       client.emit('load_history', history);
     }

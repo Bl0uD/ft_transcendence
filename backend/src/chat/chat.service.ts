@@ -5,6 +5,44 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ChatService {
   constructor(private prisma: PrismaService) {}
 
+  async getAllChannels() {
+    const channels = await this.prisma.channel.findMany({
+      orderBy: { name: 'asc' },
+    });
+    return channels.filter(channel => 
+      channel.name && !/^ai-chat-\d+$/.test(channel.name)
+    );
+  }
+
+  async findOrCreateChannel(roomId: string | number) {
+    const numericRoomId = typeof roomId === 'string' ? parseInt(roomId, 10) : roomId;
+    const roomIdentifier = String(roomId);
+
+    // 1. Chercher si le canal existe
+    let channel = await this.prisma.channel.findFirst({
+      where: {
+        OR: [
+          ...(!isNaN(numericRoomId) ? [{ id: numericRoomId }] : []),
+          { name: roomIdentifier },
+        ],
+      },
+    });
+
+    let isNewChannel = false;
+
+    // 2. Si le salon n'existe pas, on le crée ici !
+    if (!channel) {
+      channel = await this.prisma.channel.create({
+        data: {
+          name: isNaN(numericRoomId) ? roomIdentifier : `Salon ${numericRoomId}`,
+        },
+      });
+      isNewChannel = true; // On indique qu'il vient d'être créé
+    }
+
+    return { channel, isNewChannel };
+  }
+
   async saveMessage(data: { content: string; roomId: string | number; authorId: number | string }) {
     const numericAuthorId = typeof data.authorId === 'string' ? parseInt(data.authorId, 10) : data.authorId;
     const roomIdentifier = String(data.roomId);

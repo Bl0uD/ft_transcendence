@@ -4,9 +4,9 @@ import { useAuthStore } from '../store/authStore';
 import TwoFactorSetup from '../components/TwoFactorSetup';
 
 export default function Profile() {
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const updateUser = useAuthStore((state) => state.updateUser);
+  const user = useAuthStore((state: any) => state.user);
+  const logout = useAuthStore((state: any) => state.logout);
+  const updateUser = useAuthStore((state: any) => state.updateUser);
   
   const [username, setUsername] = useState(user?.username || '');
   const [nickname, setNickname] = useState(user?.nickname || ''); // 👈 FIX : Ajout du state nickname
@@ -242,6 +242,12 @@ export default function Profile() {
 		<TwoFactorSetup />
       </div>
 
+      <button
+        onClick={() => window.location.href = '/dashboard'}
+        className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-medium transition-colors shadow-md"
+      >
+        Retour au Dashboard
+      </button>
       <button 
         onClick={logout}
         className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded text-sm font-medium transition-colors shadow-md"
