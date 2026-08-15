@@ -18,4 +18,8 @@ export class ChatController {
       content: msg.content,
     }));
   }
+  @Get('channels')
+  async getChannels() {
+    return this.chatService.getAllChannels();
+  }
 }

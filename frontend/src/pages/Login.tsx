@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore';
 export default function Login() {
   const navigate = useNavigate();
   
-  const loginGlobal = useAuthStore((state) => state.login);
+  const loginGlobal = useAuthStore((state: any) => state.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
