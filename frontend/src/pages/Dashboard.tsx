@@ -5,6 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import axios from '../api/axios';
 import api from '../api/axios';
 import { io } from 'socket.io-client';
+import TwoFactorSetup from '../components/TwoFactorSetup';
 
 const socket = io({ path: '/socket.io' });
 
@@ -23,16 +24,16 @@ interface FriendRequest {
 
 export default function Dashboard() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const navigate = useNavigate();
   const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: any) => state.logout);
-  const navigate = useNavigate();
   const updateUser = useAuthStore((state: any) => state.updateUser);
   
   const [username, setUsername] = useState(user?.username || '');
+  const [nickname, setNickname] = useState(user?.nickname || ''); // 👈 FIX : Ajout du state nickname
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
   
-  // 👈 FIX : Déclaration du state manquant pour la visibilité du mot de passe
   const [showPassword, setShowPassword] = useState(false);
   
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -42,12 +43,15 @@ export default function Dashboard() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Synchroniser la preview si le user change
+  // Synchroniser la preview et le nickname si le user change
   useEffect(() => {
     if (user?.avatar) {
       setPreviewUrl(user.avatar);
     }
-  }, [user?.avatar]);
+    if (user?.nickname) {
+      setNickname(user.nickname);
+    }
+  }, [user?.avatar, user?.nickname]);
 
   // Nettoyage de l'URL blob
   useEffect(() => {
@@ -84,6 +88,11 @@ export default function Dashboard() {
       const formData = new FormData();
       formData.append('username', username);
 
+      // Le nickname est optionnel
+      if (nickname) {
+        formData.append('nickname', nickname);
+      }
+
       if (email) {
         formData.append('email', email);
       }
@@ -113,6 +122,12 @@ export default function Dashboard() {
       setStatus({ type: 'error', message: errorMsg });
     }
   };
+
+
+
+// ** Gestion des onglets sociaux **//
+
+
 
   const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'blocked'>('friends');
   const [friends, setFriends] = useState<User[]>([]);
@@ -216,6 +231,10 @@ export default function Dashboard() {
     } catch (err: any) {
       console.error('Erreur suppression/déblocage', err);
     }
+
+// ** End of Gestion des onglets sociaux **//
+
+
   };
 
   return (
@@ -250,7 +269,7 @@ export default function Dashboard() {
           isProfileOpen ? 'translate-x-0' : '-translate-x-full delay-200'
         }`}
       >
-          <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 gap-6">
+          <div className="min-h-screen max-h-full bg-slate-900 text-white flex flex-col items-center justify-center p-6 gap-6 overflow-y-auto">
             
             <button 
               onClick={() => setIsProfileOpen(false)}
@@ -319,6 +338,21 @@ export default function Dashboard() {
                   />
                 </div>
 
+                {/* Nickname Field (Optionnel) */}
+                <div>
+                  <label htmlFor="nickname" className="block text-sm font-medium text-slate-300 mb-1">
+                    New Nickname (Optionnel)
+                  </label>
+                  <input
+                    id="nickname"
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    maxLength={20}
+                  />
+                </div>
+
                 {/* Email Field */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
@@ -378,6 +412,7 @@ export default function Dashboard() {
                   {status.type === 'loading' ? 'Enregistrement...' : 'Enregistrer les modifications'}
                 </button>
               </form>
+              <TwoFactorSetup />
             </div>  
             <button 
               onClick={logout}
