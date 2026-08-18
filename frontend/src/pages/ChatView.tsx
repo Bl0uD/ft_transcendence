@@ -144,7 +144,7 @@ export const ChatView: React.FC = () => {
       <aside className="w-64 bg-white border-r flex flex-col h-screen">
         <div className="relative p-4">
           <button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/')}
               className="absolute top-4 left-4 text-slate-400 hover:text-black transition-colors focus:outline-none"
               aria-label="Back"
             >

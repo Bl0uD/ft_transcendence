@@ -9,6 +9,5 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  // Si connecté, on affiche les composants enfants (le Dashboard, etc.)
   return <Outlet />;
 }

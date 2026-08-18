@@ -1,4 +1,3 @@
-// src/pages/Dashboard.tsx
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useEffect } from 'react';
@@ -22,7 +21,7 @@ interface FriendRequest {
   requester: User;
 }
 
-export default function Dashboard() {
+export default function HomeFeed() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const navigate = useNavigate();
   const user = useAuthStore((state: any) => state.user);

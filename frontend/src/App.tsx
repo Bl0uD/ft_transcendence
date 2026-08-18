@@ -1,16 +1,22 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
+
+// Import des pages existantes
 import Login from './pages/Login';
-import Profile from './pages/Profile';
+import Settings from './pages/Settings'; 
 import Register from './pages/Register';
 import { ChatView } from './pages/ChatView';
-import { AiChatView } from './pages/AiChatView'; // 🤖 Import de la vue Assistant IA
-import { SocialView } from './pages/SocialView'; // 👥 Import de la vue Sociale (Amis)
+import { AiChatView } from './pages/AiChatView'; 
+import { SocialView } from './pages/SocialView'; 
+
+// Nouveaux imports pour l'architecture sociale
+import HomeFeed from './pages/HomeFeed';
+import PublicProfile from './pages/PublicProfile';
+
 import { useAuthStore } from './store/authStore';
 import api from './api/axios'; 
 
-// 🛡️ Composant Interne de Protection de Route
+// Composant Interne de Protection de Route
 const ProtectedRoute = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
@@ -19,7 +25,7 @@ const ProtectedRoute = () => {
 function App() {
   const { isAuthenticated, user, login, logout } = useAuthStore();
 
-  // 🔄 HYDRATATION DU STORE AU REFRESH
+  // HYDRATATION DU STORE AU REFRESH
   useEffect(() => {
     const fetchProfile = async () => {
       const currentToken = useAuthStore.getState().token;
@@ -28,15 +34,11 @@ function App() {
 
       if (isAuthenticated && !user && currentToken) {
         try {
-          // Appel à la route protégée du Dev A
           const response = await api.get('/auth/profile');
-
           console.log("Profil récupéré avec succès :", response.data);
-
           login(response.data, currentToken); 
         } catch (error: any) {
           console.error("Session invalide ou expirée :", error);
-          // Si le token est invalide ou expiré, on nettoie tout
           logout();
         }
       }
@@ -48,27 +50,31 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 🔓 Routes Publiques */}
+        {/* Page d'accueil (Réseau social public/semi-public) */}
+        <Route path="/" element={<HomeFeed />} />
+
+        {/* Routes d'Authentification */}
         <Route 
           path="/login" 
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+          element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} 
         />
         <Route path="/register" element={<Register />} />
 
-        {/* 🔒 Routes Protégées */}
+        {/* Routes Protégées */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} /> 
           <Route path="/chat" element={<ChatView />} />
-          {/* 🤖 Nouveautés Semaine 4 */}
           <Route path="/ai" element={<AiChatView />} />
           <Route path="/social" element={<SocialView />} />
         </Route>
 
-        {/* 🔄 Redirection intelligente des routes inconnues */}
+        {/* Profil Public dynamique (DOIT IMPÉRATIVEMENT ÊTRE À LA FIN) */}
+        <Route path="/:username" element={<PublicProfile />} />
+
+        {/* Redirection intelligente des routes inconnues */}
         <Route 
           path="*" 
-          element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} 
+          element={<Navigate to="/" replace />} 
         />
       </Routes>
     </BrowserRouter>

@@ -3,7 +3,7 @@ faire un volet ia hybride avec api gemini pro et petite ia locale, essayer de fa
 supprimer le prompt user pas utilise apres un refresh dans /ai
 mettre un timeout pour pas que lia reflechisse trop longtemps
 mettre une limite sur le context dsonne a lia a chaque prompt, sinon elle refelchit indefiniment
-
+refaire la page / 
 
 mettre luser qui parle a droite dans /chat 
 rajouter la pp a cote de chaque user dans le /chat

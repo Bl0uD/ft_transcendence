@@ -29,7 +29,7 @@ export default function Login() {
       })
       .then((res) => {
         loginGlobal(res.data, token);
-        navigate('/dashboard', { replace: true });
+        navigate('/', { replace: true });
       })
       .catch(() => {
         // Si le profil nécessite une 2FA, l'intercepteur Axios va l'attraper ici
@@ -48,7 +48,7 @@ export default function Login() {
       const response = await api.post('/auth/login', { email, password });
       localStorage.setItem('access_token', response.data.access_token);
       loginGlobal(response.data.user, response.data.access_token);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       setError(
         err.response?.data?.message || 

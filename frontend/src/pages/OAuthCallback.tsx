@@ -17,7 +17,7 @@ export default function LoginSuccess() {
       // Optionnel : si ton store a besoin de l'objet user complet, tu devras peut-être faire un appel /api/users/me ici
       // Pour l'instant, on simule l'état connecté pour déclencher la redirection
       loginGlobal({} as any, token); 
-      navigate('/dashboard', { replace: true });
+      navigate('/', { replace: true });
     } else {
       navigate('/login', { replace: true });
     }

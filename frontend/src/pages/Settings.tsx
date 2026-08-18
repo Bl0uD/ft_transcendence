@@ -3,7 +3,7 @@ import axios from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import TwoFactorSetup from '../components/TwoFactorSetup';
 
-export default function Profile() {
+export default function Settings() {
   const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: any) => state.logout);
   const updateUser = useAuthStore((state: any) => state.updateUser);
@@ -243,10 +243,10 @@ export default function Profile() {
       </div>
 
       <button
-        onClick={() => window.location.href = '/dashboard'}
+        onClick={() => window.location.href = '/'}
         className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-medium transition-colors shadow-md"
       >
-        Retour au Dashboard
+        Retour à l'accueil
       </button>
       <button 
         onClick={logout}

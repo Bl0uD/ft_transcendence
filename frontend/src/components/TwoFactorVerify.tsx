@@ -22,7 +22,7 @@ export default function TwoFactorVerify() {
       });
 
       login(response.data.user, response.data.access_token);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Code invalide. Veuillez réessayer.');
     } finally {

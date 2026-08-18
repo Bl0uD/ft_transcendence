@@ -1,5 +1,5 @@
 import { 
-  Controller, Put, Body, UseGuards, Req, UseInterceptors, 
+  Controller, Put, Get, Param, Body, UseGuards, Req, UseInterceptors, 
   UploadedFile, BadRequestException 
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -9,10 +9,17 @@ import { UsersService } from './users.service';
 import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 
 @Controller('users')
-@UseGuards(JwtTwoFactorGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  // 🌍 ROUTE PUBLIQUE : Accessible sans être connecté
+  @Get('public/:username')
+  async getPublicProfile(@Param('username') username: string) {
+    return this.usersService.getPublicProfile(username);
+  }
+
+  // 🔒 ROUTE PROTÉGÉE : Modification des paramètres
+  @UseGuards(JwtTwoFactorGuard)
   @Put('profile')
   @UseInterceptors(FileInterceptor('avatar', {
     storage: diskStorage({
@@ -34,7 +41,8 @@ export class UsersController {
   async updateProfile(
     @Req() req: any,
     @Body('username') username?: string,
-	@Body('email') email?: string,
+    @Body('nickname') nickname?: string, // 👈 NOUVEAU : Récupération du nickname
+    @Body('email') email?: string,
     @Body('password') password?: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
@@ -45,6 +53,6 @@ export class UsersController {
       avatar = `/uploads/avatars/${file.filename}`;
     }
 
-    return this.usersService.updateProfile(userId, { username, email, password, avatar });
+    return this.usersService.updateProfile(userId, { username, nickname, email, password, avatar });
   }
 }

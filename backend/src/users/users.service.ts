@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -7,9 +7,29 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  // 🌍 NOUVEAUTÉ : Récupérer le profil public (pour la page /:username)
+  async getPublicProfile(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { username: username },
+      select: {
+        id: true,
+        username: true,
+        nickname: true,
+        avatar: true,
+        createdAt: true,
+      }
+    });
+
+    if (!user) {
+      throw new NotFoundException("Cet utilisateur n'existe pas.");
+    }
+    return user;
+  }
+
+  // 🔒 MISE À JOUR : Ajout du paramètre `nickname`
   async updateProfile(
     userId: number | string, 
-    data: { username?: string; email?: string; password?: string; avatar?: string }
+    data: { username?: string; nickname?: string; email?: string; password?: string; avatar?: string }
   ) {
     const numericId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
 
@@ -18,6 +38,11 @@ export class UsersService {
 
       if (data.username !== undefined) {
         updateData.username = data.username;
+      }
+
+      // 👇 Prise en compte du nickname
+      if (data.nickname !== undefined) {
+        updateData.nickname = data.nickname;
       }
 
       if (data.email !== undefined) {
@@ -36,7 +61,8 @@ export class UsersService {
       return await this.prisma.user.update({
         where: { id: numericId },
         data: updateData,
-        select: { id: true, username: true, email: true, avatar: true },
+        // 👇 On renvoie aussi le nickname mis à jour au frontend
+        select: { id: true, username: true, nickname: true, email: true, avatar: true },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
