@@ -89,6 +89,7 @@ model Channel {
   name      String?     // Nom du salon (ex: "ai-chat-1" ou "Salon Général")
   type      ChannelType @default(PUBLIC)
   password  String?     // Hashé si type == PROTECTED
+  userLimit Int?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 

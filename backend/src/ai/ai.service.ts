@@ -12,29 +12,28 @@ export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private readonly ollamaUrl = 'http://ai:11434/api/chat';
   
-  // 🟢 1. Prompt enrichi avec TOUTES tes actions sociales
   private readonly systemPrompt = `Tu es une API de routage strict. Tu DOIS classifier la requête selon l'algorithme ci-dessous.
-	Réponds UNIQUEMENT avec un objet JSON.
+    Réponds UNIQUEMENT avec un objet JSON.
 
-	ALGORITHME DE DÉCISION (Vérifie dans cet ordre) :
-	1. SI l'utilisateur demande à lister, voir, ou donner ses amis => action: "GET_FRIENDS_USERS", target: null
-	2. SI l'utilisateur utilise le mot "bloque" ou "bloquer" => action: "BLOCK_USER", target: "nom_utilisateur"
-	3. SI l'utilisateur utilise le mot "débloque" ou "débloquer" => action: "UNBLOCK_USER", target: "nom_utilisateur"
-	4. SI l'utilisateur demande d'ajouter en ami => action: "ADD_FRIEND", target: "nom_utilisateur"
-	5. SI l'utilisateur demande de supprimer un ami => action: "DELETE_FRIEND", target: "nom_utilisateur"
-	6. SI l'utilisateur demande d'envoyer un message => action: "SEND_MESSAGE", target: "nom_utilisateur", payload: "le message"
-	7. SI l'utilisateur demande d'aller sur une page => action: "NAVIGATE", target: "URL"
-	8. SINON => action: "NONE", target: null
+    ALGORITHME DE DÉCISION (Vérifie dans cet ordre) :
+    1. SI l'utilisateur demande à lister, voir, ou donner ses amis => action: "GET_FRIENDS_USERS", target: null
+    2. SI l'utilisateur utilise le mot "bloque" ou "bloquer" => action: "BLOCK_USER", target: "nom_utilisateur"
+    3. SI l'utilisateur utilise le mot "débloque" ou "débloquer" => action: "UNBLOCK_USER", target: "nom_utilisateur"
+    4. SI l'utilisateur demande d'ajouter en ami => action: "ADD_FRIEND", target: "nom_utilisateur"
+    5. SI l'utilisateur demande de supprimer un ami => action: "DELETE_FRIEND", target: "nom_utilisateur"
+    6. SI l'utilisateur demande d'envoyer un message => action: "SEND_MESSAGE", target: "nom_utilisateur", payload: "le message"
+    7. SI l'utilisateur demande d'aller sur une page => action: "NAVIGATE", target: "URL"
+    8. SINON => action: "NONE", target: null
 
-	EXEMPLES D'ENTRAÎNEMENT ABSOLUS :
-	- "liste mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
-	- "donne moi mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
-	- "voir mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
-	- "bloque l'user norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
-	- "bloque norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
-	- "salut comment ça va ?" -> {"action": "NONE", "target": null, "payload": null, "reply": "Bonjour ! Je vais bien, merci."}
+    EXEMPLES D'ENTRAÎNEMENT ABSOLUS :
+    - "liste mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
+    - "donne moi mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
+    - "voir mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
+    - "bloque l'user norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
+    - "bloque norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
+    - "salut comment ça va ?" -> {"action": "NONE", "target": null, "payload": null, "reply": "Bonjour ! Je vais bien, merci."}
 
-	IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
+    IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
 
   private aiBotId: number;
 
@@ -68,7 +67,6 @@ export class AiService implements OnModuleInit {
   }
 
   async streamResponse(userMessages: ChatMessageDto[], res: Response, userId: number): Promise<void> {
-    const roomId = `ai-chat-${userId}`; 
     const lastUserMessage = userMessages[userMessages.length - 1];
 
     if (!lastUserMessage || !lastUserMessage.content.trim()) {
@@ -78,9 +76,34 @@ export class AiService implements OnModuleInit {
     }
 
     try {
+      const roomName = `ai-chat-${userId}`; 
+
+      // 1. On récupère ou on crée le vrai salon numérique pour l'IA
+      let aiChannel = await this.prisma.channel.findFirst({
+        where: { name: roomName }
+      });
+
+      if (!aiChannel) {
+        aiChannel = await this.prisma.channel.create({
+          data: {
+            name: roomName,
+            type: 'PRIVATE',
+            members: {
+              create: [
+                { userId: userId, role: 'MEMBER' },
+                { userId: this.aiBotId, role: 'MEMBER' }
+              ]
+            }
+          }
+        });
+      }
+
+      const channelId = aiChannel.id;
+
+      // 2. On sauvegarde le message avec channelId
       await this.chatService.saveMessage({
         content: lastUserMessage.content,
-        roomId: roomId,
+        channelId: channelId, 
         authorId: userId,
       });
 
@@ -97,7 +120,7 @@ export class AiService implements OnModuleInit {
             messages: fullConversation,
             stream: true,
             format: 'json',
-			options: {
+            options: {
               temperature: 0.0 
             }
           },
@@ -121,23 +144,22 @@ export class AiService implements OnModuleInit {
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-         
-
-            if (parsed.done) {
-              if (fullAiRe try {
+          try {
             const parsed = JSON.parse(trimmed);
+            
             if (parsed.message?.content) {
               fullAiResponse += parsed.message.content;
-            }sponse.trim()) {
+            }
+
+            if (parsed.done) {
+              if (fullAiResponse.trim()) {
                 try {
                   const aiResult = JSON.parse(fullAiResponse);
                   const action = aiResult.action;
 
-                  // 🟢 2. ARCHITECTURE CENTRALISÉE POUR L'EXÉCUTION
                   try {
-                    // A. On cible les actions qui nécessitent un utilisateur
                     const actionsRequiringTarget = ['SEND_MESSAGE', 'ADD_FRIEND', 'DELETE_FRIEND', 'BLOCK_USER', 'UNBLOCK_USER'];
-                    let targetUser = null;
+                    let targetUser: any = null;
 
                     if (actionsRequiringTarget.includes(action)) {
                       if (!aiResult.target) throw new Error("Nom d'utilisateur cible manquant.");
@@ -149,31 +171,39 @@ export class AiService implements OnModuleInit {
                       if (!targetUser) throw new Error(`L'utilisateur "${aiResult.target}" est introuvable.`);
                     }
 
-                    // B. On route vers le bon service
                     switch (action) {
                       case 'SEND_MESSAGE':
+                        if (!targetUser) break; 
                         const minId = Math.min(userId, targetUser.id);
                         const maxId = Math.max(userId, targetUser.id);
+                        
+                        // 3. On récupère le DM numérique
+                        const { channel: dmChannel } = await this.chatService.getOrCreateDirectMessage(minId, maxId);
+                        
                         await this.chatService.saveMessage({
                           content: aiResult.payload,
-                          roomId: `dm_${minId}_${maxId}`,
+                          channelId: dmChannel.id,
                           authorId: userId,
                         });
                         break;
                         
                       case 'ADD_FRIEND':
-                        await this.friendsService.sendRequest(userId, targetUser.username); // Prend un string
+                        if (!targetUser) break;
+                        await this.friendsService.sendRequest(userId, targetUser.username);
                         break;
                         
                       case 'DELETE_FRIEND':
-                        await this.friendsService.removeRelation(userId, targetUser.id); // Prend un Int
+                        if (!targetUser) break;
+                        await this.friendsService.removeRelation(userId, targetUser.id);
                         break;
                         
                       case 'BLOCK_USER':
+                        if (!targetUser) break;
                         await this.friendsService.blockUser(userId, targetUser.id);
                         break;
                         
                       case 'UNBLOCK_USER':
+                        if (!targetUser) break;
                         await this.friendsService.unblockUser(userId, targetUser.id);
                         break;
                         
@@ -191,15 +221,14 @@ export class AiService implements OnModuleInit {
                           : "Vous n'avez bloqué personne.";
                         break;
                     }
-                  } catch (logicError) {
-                    // C. On intercepte TOUTES les erreurs de tes services (ex: "Vous êtes déjà amis")
+                  } catch (logicError: any) {
                     aiResult.reply = logicError.message || "L'action n'a pas pu être effectuée.";
                   }
 
-                  // 3. Sauvegarde et envoi au frontend (Reste inchangé)
+                  // 4. Sauvegarde de la réponse de l'IA
                   await this.chatService.saveMessage({
                     content: aiResult.reply || "Action effectuée.",
-                    roomId: roomId,
+                    channelId: channelId,
                     authorId: this.aiBotId,
                   });
 
@@ -213,7 +242,9 @@ export class AiService implements OnModuleInit {
               }
               res.end();
             }
-          } catch { /* Fragment partiel */ }
+          } catch (parseError) {
+            // Silencieux pour le stream incomplet
+          }
         }
       });
 
@@ -224,7 +255,10 @@ export class AiService implements OnModuleInit {
           res.end();
         }
       });
-      res.on('close', () => response.data.destroy());
+      
+      res.on('close', () => {
+        response.data.destroy();
+      });
 
     } catch (error) {
       this.logger.error('Ollama est injoignable', error);

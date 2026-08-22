@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSocket } from '../hooks/useSocket';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
-import { useNavigate } from 'react-router-dom';
+// 🟢 NOUVEAU : Import de useSearchParams
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface Message {
   id?: number | string;
@@ -19,31 +20,106 @@ interface Message {
   };
 }
 
+interface RoomMember {
+  userId: number;
+  user: {
+    id: number;
+    username: string;
+    avatar?: string;
+  };
+}
+
 interface Room {
   id: number;
-  name: string;
+  name: string | null;
+  type?: string;
+  members?: RoomMember[];
 }
+
+const MessageAvatar = ({ msg, onClick }: { msg: Message; onClick: (username?: string) => void }) => {
+  const [hasError, setHasError] = useState(false);
+  
+  const senderName = msg.sender?.username || msg.senderName || (msg.senderId ? `Utilisateur #${msg.senderId}` : 'Utilisateur');
+  const clickableUsername = msg.sender?.username || msg.senderName;
+
+  if (!msg.sender?.avatar || hasError) {
+    return (
+      <div 
+        onClick={() => onClick(clickableUsername)}
+        className="w-7 h-7 rounded-full bg-slate-300 flex items-center justify-center text-xs text-slate-700 font-bold cursor-pointer hover:ring-2 hover:ring-blue-400 transition shrink-0"
+      >
+        {senderName.charAt(0).toUpperCase()}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={msg.sender.avatar}
+      alt={`${senderName} avatar`}
+      onError={() => setHasError(true)}
+      onClick={() => onClick(clickableUsername)}
+      className="w-7 h-7 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-blue-400 transition shrink-0"
+    />
+  );
+};
 
 export const ChatView: React.FC = () => {
   const user = useAuthStore((state: any) => state.user);
-  // On utilise uniquement le socket fourni par useSocket
   const { socket, isConnected, authError } = useSocket();
-
   const navigate = useNavigate();
+  // 🟢 NOUVEAU : Hook pour lire l'URL
+  const [searchParams] = useSearchParams();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [activeRoom, setActiveRoom] = useState<string>('general');
+  
+  const [activeRoom, setActiveRoom] = useState<number | null>(null);
+  
   const [isSending, setIsSending] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 1. Récupération des salons
+  const myId = user?.id || user?.sub || user?.userId;
+
+  const formatRoomName = (room?: Room) => {
+    if (!room) return 'Chargement...';
+    
+    if (room.type === 'DIRECT' || (room.name && room.name.startsWith('dm_'))) {
+      if (room.members && room.members.length > 0) {
+        const otherMember = room.members.find(m => m.userId !== myId);
+        if (otherMember?.user?.username) {
+          return `💬 ${otherMember.user.username}`;
+        }
+      }
+      return '💬 Message Privé';
+    }
+    
+    if (room.name) {
+      if (room.name.startsWith('ai-chat-')) return '🤖 Assistant IA';
+      return `# ${room.name}`;
+    }
+
+    return 'Salon inconnu';
+  };
+
+  const handleUserClick = (username?: string) => {
+    if (username) navigate(`/${username}`);
+  };
+
   const fetchRooms = async () => {
     try {
       const response = await api.get<Room[]>('/chat/channels');
       setRooms(response.data);
+      
+      // 🔄 MODIFIÉ : On cherche l'ID passé en URL depuis le profil
+      const roomFromUrl = searchParams.get('roomId');
+      
+      if (roomFromUrl) {
+        setActiveRoom(Number(roomFromUrl));
+      } else if (!activeRoom && response.data.length > 0) {
+        setActiveRoom(response.data[0].id);
+      }
     } catch (error) {
       console.error("Erreur lors de la récupération des salons :", error);
     }
@@ -51,80 +127,70 @@ export const ChatView: React.FC = () => {
 
   useEffect(() => {
     fetchRooms();
-  }, []);
+  }, [searchParams]); // On rajoute searchParams dans les dépendances pour rafraîchir si l'URL change
 
-  // 2. Gestion des événements Socket
   useEffect(() => {
     if (!isConnected || !socket) return;
 
-    const handleRoomsUpdated = () => {
-      fetchRooms();
-    };
-
+    const handleRoomsUpdated = () => fetchRooms();
     const handleHistory = (historyMessages: Message[]) => {
-      if (Array.isArray(historyMessages)) {
-        setMessages(historyMessages);
-      }
+      if (Array.isArray(historyMessages)) setMessages(historyMessages);
     };
-
     const handleReceiveMessage = (incomingMessage: Message) => {
       setMessages((prev) => {
-        if (incomingMessage.id && prev.some((m) => m.id === incomingMessage.id)) {
-          return prev;
-        }
+        if (incomingMessage.id && prev.some((m) => m.id === incomingMessage.id)) return prev;
         return [...prev, incomingMessage];
       });
+    };
+    const handleError = (err: string) => {
+      console.error("Erreur Socket :", err);
     };
 
     socket.on('rooms_updated', handleRoomsUpdated);
     socket.on('load_history', handleHistory);
     socket.on('receive_message', handleReceiveMessage);
+    socket.on('error', handleError);
 
-    // On rejoint le salon actif
-    if (activeRoom) {
-      socket.emit('joinChannel', { roomId: activeRoom });
+    if (activeRoom !== null) {
+      socket.emit('joinChannel', { channelId: activeRoom });
     }
 
     return () => {
       socket.off('rooms_updated', handleRoomsUpdated);
       socket.off('load_history', handleHistory);
       socket.off('receive_message', handleReceiveMessage);
+      socket.off('error', handleError);
     };
   }, [socket, activeRoom, isConnected]);
 
-  // 3. Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // 4. Envoi de message
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentInput.trim() || !isConnected || isSending || !socket) return;
+    if (!currentInput.trim() || !isConnected || isSending || !socket || activeRoom === null) return;
 
     setIsSending(true);
-
+    
     socket.emit('send_message', {
-      roomId: activeRoom,
+      channelId: activeRoom,
       content: currentInput.trim(),
     });
 
     setCurrentInput('');
-    setTimeout(() => {
-      setIsSending(false);
-    }, 100);
+    setTimeout(() => setIsSending(false), 100);
   };
 
   const getSenderName = (msg: Message) => {
     return (
+      msg.sender?.username || 
       msg.senderName ||
-      msg.sender?.username ||
       (msg.senderId ? `Utilisateur #${msg.senderId}` : 'Utilisateur')
     );
   };
 
   const isMe = (msg: Message) => {
-    const myId = user?.id || user?.sub || user?.userId;
     const msgSenderId = msg.senderId || msg.sender?.id;
     return msgSenderId === myId;
   };
@@ -138,9 +204,10 @@ export const ChatView: React.FC = () => {
       : '';
   };
 
+  const activeRoomObj = rooms.find(r => r.id === activeRoom);
+
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Barre latérale des salons */}
       <aside className="w-64 bg-white border-r flex flex-col h-screen">
         <div className="relative p-4">
           <button 
@@ -151,21 +218,8 @@ export const ChatView: React.FC = () => {
               ← Retour
           </button>
         </div>
-        <h2 className="p-4 font-bold text-lg border-b flex justify-between items-center">
+        <h2 className="p-4 font-bold text-lg border-b flex justify-between items-center mt-6">
           <span>Salons</span>
-          <button
-            type="button"
-            onClick={() => {
-              const roomName = prompt("Entrez le nom du salon à rejoindre :");
-              if (roomName && roomName.trim()) {
-                // On met juste à jour l'activeRoom, le useEffect s'occupe de l'émettre proprement
-                setActiveRoom(roomName.trim());
-              }
-            }}
-            className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md border transition"
-          >
-            + Rejoindre
-          </button>
         </h2>
 
         <div className="p-2 border-b text-xs flex items-center justify-center bg-gray-50">
@@ -185,19 +239,21 @@ export const ChatView: React.FC = () => {
             <li
               key={room.id}
               className={`p-4 cursor-pointer transition ${
-                activeRoom === room.name || activeRoom === String(room.id)
+                activeRoom === room.id
                   ? 'bg-blue-50 border-l-4 border-blue-500 font-semibold text-blue-700'
                   : 'hover:bg-gray-50 text-gray-700'
               }`}
-              onClick={() => setActiveRoom(room.name)}
+              onClick={() => setActiveRoom(room.id)}
             >
-              # {room.name}
+              {formatRoomName(room)}
             </li>
           ))}
+          {rooms.length === 0 && (
+            <div className="p-4 text-sm text-gray-400 text-center">Aucun salon disponible</div>
+          )}
         </ul>
       </aside>
 
-      {/* Zone de conversation */}
       <main className="flex-1 flex flex-col min-w-0">
         {authError && (
           <div className="bg-red-100 text-red-700 p-2 text-center text-sm font-semibold border-b border-red-200">
@@ -205,8 +261,8 @@ export const ChatView: React.FC = () => {
           </div>
         )}
 
-        <div className="p-3 bg-white border-b text-gray-700 font-semibold">
-          Salon : #{activeRoom}
+        <div className="p-3 bg-white border-b text-gray-700 font-semibold shadow-sm flex items-center justify-between">
+          <span>{formatRoomName(activeRoomObj)}</span>
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto">
@@ -218,6 +274,7 @@ export const ChatView: React.FC = () => {
             messages.map((msg, index) => {
               const senderName = getSenderName(msg);
               const formattedTime = getFormattedTime(msg);
+              const clickableUsername = msg.sender?.username || msg.senderName;
 
               return (
                 <div
@@ -225,18 +282,14 @@ export const ChatView: React.FC = () => {
                   className={`mb-4 flex flex-col w-full ${isMe(msg) ? 'items-end' : 'items-start'}`}
                 >
                   <div className={`flex items-center gap-2 mb-1 ${isMe(msg) ? 'flex-row-reverse' : ''}`}>
-                    {msg.sender?.avatar ? (
-                      <img
-                        src={msg.sender.avatar}
-                        alt={`${senderName} avatar`}
-                        className="w-7 h-7 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full bg-slate-300 flex items-center justify-center text-xs text-slate-700 font-bold">
-                        {senderName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="font-bold text-xs text-gray-700">{senderName}</span>
+                    <MessageAvatar msg={msg} onClick={handleUserClick} />
+                    
+                    <span 
+                      onClick={() => handleUserClick(clickableUsername)}
+                      className="font-bold text-xs text-gray-700 cursor-pointer hover:underline"
+                    >
+                      {senderName}
+                    </span>
                     {formattedTime && <span className="text-[10px] text-gray-400">{formattedTime}</span>}
                   </div>
 
@@ -263,7 +316,7 @@ export const ChatView: React.FC = () => {
               value={currentInput}
               onChange={(e) => setCurrentInput(e.target.value)}
               disabled={!isConnected}
-              placeholder={isConnected ? `Envoyer un message sur #${activeRoom}...` : "Connexion en cours..."}
+              placeholder={isConnected ? `Envoyer un message...` : "Connexion en cours..."}
               className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 text-sm"
             />
             <button

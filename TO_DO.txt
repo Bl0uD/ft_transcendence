@@ -9,6 +9,5 @@ faire les posts
 
 faire des messages prives fonctionnels
 
-rendre les users dans /chat cliquables et ca amene sur leur profil
+faire un notif sure la paghe /chat, salon en blanc
 
-faire un placeholder pour les user qui nont pas encore rentre de pp 

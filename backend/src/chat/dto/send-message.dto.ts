@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, IsInt, IsPositive } from 'class-validator';
 import { Transform } from 'class-transformer';
 import sanitizeHtml from 'sanitize-html';
 
@@ -16,7 +16,9 @@ export class SendMessageDto {
   )
   content: string;
 
-  @IsString()
+  // 🔄 MODIFIÉ : On attend désormais un channelId numérique strict
+  @IsInt({ message: 'Le channelId doit être un nombre entier.' })
+  @IsPositive({ message: 'Le channelId doit être un nombre positif.' })
   @IsNotEmpty()
-  roomId: string;
+  channelId: number;
 }
