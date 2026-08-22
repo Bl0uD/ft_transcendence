@@ -6,7 +6,7 @@ localhost:443 {
     }
 
     # 2. WebSockets Socket.io
-    handle /socket.io/* {
+    handle /socket.io* {
         reverse_proxy backend:3000
     }
 

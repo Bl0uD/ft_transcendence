@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '../store/authStore'; // Adaptez le chemin vers votre store Zustand
+import { useAuthStore } from '../store/authStore';
 
 let socket: Socket | null = null;
 
@@ -9,6 +9,7 @@ export const getSocket = (): Socket => {
     
     // Initialisation vers le namespace /chat (via Caddy)
     socket = io('/chat', {
+	  path: '/socket.io',
       auth: { token },
       autoConnect: false,					// Prévient la connexion avant que le composant Chat ne soit monté
       transports: ['polling', 'websocket'],	// Force WebSocket pour éviter le polling initial

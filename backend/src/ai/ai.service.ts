@@ -5,21 +5,44 @@ import { firstValueFrom } from 'rxjs';
 import { ChatMessageDto } from './dto/chat-prompt.dto';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { FriendsService } from '../friends/friends.service';
 
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private readonly ollamaUrl = 'http://ai:11434/api/chat';
-  private readonly systemPrompt = "Tu es l'assistant de ft_transcendence. Réponds de manière concise et amicale.";
+  
+  // 🟢 1. Prompt enrichi avec TOUTES tes actions sociales
+  private readonly systemPrompt = `Tu es une API de routage strict. Tu DOIS classifier la requête selon l'algorithme ci-dessous.
+	Réponds UNIQUEMENT avec un objet JSON.
+
+	ALGORITHME DE DÉCISION (Vérifie dans cet ordre) :
+	1. SI l'utilisateur demande à lister, voir, ou donner ses amis => action: "GET_FRIENDS_USERS", target: null
+	2. SI l'utilisateur utilise le mot "bloque" ou "bloquer" => action: "BLOCK_USER", target: "nom_utilisateur"
+	3. SI l'utilisateur utilise le mot "débloque" ou "débloquer" => action: "UNBLOCK_USER", target: "nom_utilisateur"
+	4. SI l'utilisateur demande d'ajouter en ami => action: "ADD_FRIEND", target: "nom_utilisateur"
+	5. SI l'utilisateur demande de supprimer un ami => action: "DELETE_FRIEND", target: "nom_utilisateur"
+	6. SI l'utilisateur demande d'envoyer un message => action: "SEND_MESSAGE", target: "nom_utilisateur", payload: "le message"
+	7. SI l'utilisateur demande d'aller sur une page => action: "NAVIGATE", target: "URL"
+	8. SINON => action: "NONE", target: null
+
+	EXEMPLES D'ENTRAÎNEMENT ABSOLUS :
+	- "liste mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
+	- "donne moi mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
+	- "voir mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
+	- "bloque l'user norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
+	- "bloque norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
+	- "salut comment ça va ?" -> {"action": "NONE", "target": null, "payload": null, "reply": "Bonjour ! Je vais bien, merci."}
+
+	IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
 
   private aiBotId: number;
-  private readonly MAX_MESSAGES = 10;
-  private readonly MAX_TOTAL_CHARS = 6000;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly chatService: ChatService,
     private readonly prisma: PrismaService,
+    private readonly friendsService: FriendsService,
   ) {}
 
   async onModuleInit() {
@@ -28,7 +51,6 @@ export class AiService implements OnModuleInit {
 
   private async ensureAiBotExists() {
     const BOT_USERNAME = 'Bot IA';
-
     try {
       const bot = await this.prisma.user.upsert({
         where: { username: BOT_USERNAME },
@@ -39,49 +61,34 @@ export class AiService implements OnModuleInit {
           avatar: '/uploads/avatars/ai-avatar.png',
         },
       });
-
       this.aiBotId = bot.id;
-      this.logger.log(`[IA] Bot utilisateur prêt (ID BDD: ${this.aiBotId})`);
     } catch (error) {
-      this.logger.error("[IA] Erreur lors de l'initialisation du Bot IA", error);
+      this.logger.error("[IA] Erreur initialisation Bot", error);
     }
   }
 
   async streamResponse(userMessages: ChatMessageDto[], res: Response, userId: number): Promise<void> {
-    const roomId = `ai-chat-${userId}`;
+    const roomId = `ai-chat-${userId}`; 
     const lastUserMessage = userMessages[userMessages.length - 1];
 
+    if (!lastUserMessage || !lastUserMessage.content.trim()) {
+      res.write(`data: ${JSON.stringify({ done: true, error: "Message vide." })}\n\n`);
+      res.end();
+      return;
+    }
+
     try {
-      // 1. Sauvegarder uniquement le dernier message utilisateur s'il existe
-      if (lastUserMessage && lastUserMessage.role === 'user' && lastUserMessage.content.trim()) {
-        await this.chatService.saveMessage({
-          content: lastUserMessage.content,
-          roomId: roomId,
-          authorId: userId,
-        });
-      }
-
-      // 2. Charger les messages depuis Prisma
-      const dbMessages = await this.chatService.getMessagesByRoomId(roomId, this.MAX_MESSAGES);
-
-      // 3. Mapping ultra-solide du rôle pour Ollama (vérification par senderId ET username)
-      const formattedHistory: ChatMessageDto[] = dbMessages.map((msg: any) => {
-        const isBot = msg.senderId === this.aiBotId || msg.sender?.username === 'Bot IA';
-        return {
-          role: isBot ? 'assistant' : 'user',
-          content: msg.content,
-        };
+      await this.chatService.saveMessage({
+        content: lastUserMessage.content,
+        roomId: roomId,
+        authorId: userId,
       });
-
-      // 4. Limiter le contexte
-      const truncatedHistory = this.limitContextWindow(formattedHistory);
 
       const fullConversation = [
         { role: 'system', content: this.systemPrompt },
-        ...truncatedHistory,
+        { role: 'user', content: lastUserMessage.content },
       ];
 
-      // 5. Envoi à Ollama
       const response = await firstValueFrom(
         this.httpService.post(
           this.ollamaUrl,
@@ -89,6 +96,10 @@ export class AiService implements OnModuleInit {
             model: 'llama3',
             messages: fullConversation,
             stream: true,
+            format: 'json',
+			options: {
+              temperature: 0.0 
+            }
           },
           { responseType: 'stream' },
         ),
@@ -110,70 +121,114 @@ export class AiService implements OnModuleInit {
           const trimmed = line.trim();
           if (!trimmed) continue;
 
-          try {
-            const parsed = JSON.parse(trimmed);
-
-            if (parsed.message?.content) {
-              const content = parsed.message.content;
-              fullAiResponse += content;
-
-              res.write(`data: ${JSON.stringify({ chunk: content })}\n\n`);
-            }
+         
 
             if (parsed.done) {
-              // 6. Sauvegarder la réponse de l'IA une fois terminée
-              if (fullAiResponse.trim()) {
-                await this.chatService.saveMessage({
-                  content: fullAiResponse,
-                  roomId: roomId,
-                  authorId: this.aiBotId,
-                });
-              }
+              if (fullAiRe try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.message?.content) {
+              fullAiResponse += parsed.message.content;
+            }sponse.trim()) {
+                try {
+                  const aiResult = JSON.parse(fullAiResponse);
+                  const action = aiResult.action;
 
-              res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+                  // 🟢 2. ARCHITECTURE CENTRALISÉE POUR L'EXÉCUTION
+                  try {
+                    // A. On cible les actions qui nécessitent un utilisateur
+                    const actionsRequiringTarget = ['SEND_MESSAGE', 'ADD_FRIEND', 'DELETE_FRIEND', 'BLOCK_USER', 'UNBLOCK_USER'];
+                    let targetUser = null;
+
+                    if (actionsRequiringTarget.includes(action)) {
+                      if (!aiResult.target) throw new Error("Nom d'utilisateur cible manquant.");
+                      
+                      targetUser = await this.prisma.user.findUnique({
+                        where: { username: aiResult.target },
+                      });
+                      
+                      if (!targetUser) throw new Error(`L'utilisateur "${aiResult.target}" est introuvable.`);
+                    }
+
+                    // B. On route vers le bon service
+                    switch (action) {
+                      case 'SEND_MESSAGE':
+                        const minId = Math.min(userId, targetUser.id);
+                        const maxId = Math.max(userId, targetUser.id);
+                        await this.chatService.saveMessage({
+                          content: aiResult.payload,
+                          roomId: `dm_${minId}_${maxId}`,
+                          authorId: userId,
+                        });
+                        break;
+                        
+                      case 'ADD_FRIEND':
+                        await this.friendsService.sendRequest(userId, targetUser.username); // Prend un string
+                        break;
+                        
+                      case 'DELETE_FRIEND':
+                        await this.friendsService.removeRelation(userId, targetUser.id); // Prend un Int
+                        break;
+                        
+                      case 'BLOCK_USER':
+                        await this.friendsService.blockUser(userId, targetUser.id);
+                        break;
+                        
+                      case 'UNBLOCK_USER':
+                        await this.friendsService.unblockUser(userId, targetUser.id);
+                        break;
+                        
+                      case 'GET_FRIENDS_USERS':
+                        const friends = await this.friendsService.getFriendsUsers(userId);
+                        aiResult.reply = friends.length 
+                          ? `Voici vos amis : ${friends.map(f => f.username).join(', ')}.` 
+                          : "Vous n'avez pas encore d'amis.";
+                        break;
+                        
+                      case 'GET_BLOCKED_USERS':
+                        const blocked = await this.friendsService.getBlockedUsers(userId);
+                        aiResult.reply = blocked.length 
+                          ? `Utilisateurs bloqués : ${blocked.map(b => b.username).join(', ')}.` 
+                          : "Vous n'avez bloqué personne.";
+                        break;
+                    }
+                  } catch (logicError) {
+                    // C. On intercepte TOUTES les erreurs de tes services (ex: "Vous êtes déjà amis")
+                    aiResult.reply = logicError.message || "L'action n'a pas pu être effectuée.";
+                  }
+
+                  // 3. Sauvegarde et envoi au frontend (Reste inchangé)
+                  await this.chatService.saveMessage({
+                    content: aiResult.reply || "Action effectuée.",
+                    roomId: roomId,
+                    authorId: this.aiBotId,
+                  });
+
+                  res.write(`data: ${JSON.stringify({ done: true, result: aiResult })}\n\n`);
+                } catch (err) {
+                  this.logger.error("Erreur parsing JSON IA :", err);
+                  res.write(`data: ${JSON.stringify({ done: true, error: "Désolé, je n'ai pas pu formuler ma réponse." })}\n\n`);
+                }
+              } else {
+                res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+              }
               res.end();
             }
-          } catch {
-            // Fragment partiel ignoré
-          }
+          } catch { /* Fragment partiel */ }
         }
       });
 
       response.data.on('error', (err: Error) => {
         this.logger.error('Erreur durant le streaming', err);
         if (!res.writableEnded) {
-          res.write(`data: ${JSON.stringify({ error: 'Erreur durant la génération.' })}\n\n`);
+          res.write(`data: ${JSON.stringify({ error: 'Erreur de génération.' })}\n\n`);
           res.end();
         }
       });
-
-      res.on('close', () => {
-        response.data.destroy();
-      });
+      res.on('close', () => response.data.destroy());
 
     } catch (error) {
       this.logger.error('Ollama est injoignable', error);
       throw new InternalServerErrorException("L'assistant IA est indisponible.");
     }
-  }
-
-  private limitContextWindow(messages: ChatMessageDto[]): ChatMessageDto[] {
-    const recent = messages.slice(-this.MAX_MESSAGES);
-    const filtered: ChatMessageDto[] = [];
-    let currentChars = 0;
-
-    for (let i = recent.length - 1; i >= 0; i--) {
-      const msg = recent[i];
-      const msgLength = msg.content.length;
-
-      if (currentChars + msgLength > this.MAX_TOTAL_CHARS && filtered.length > 0) {
-        break;
-      }
-
-      filtered.unshift(msg);
-      currentChars += msgLength;
-    }
-
-    return filtered;
   }
 }

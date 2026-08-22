@@ -67,11 +67,8 @@ export async function streamAIChat(
 
         try {
           const parsed = JSON.parse(cleanLine);
-          const chunk = parsed.delta ?? parsed.chunk ?? parsed.content;
-
-          if (chunk !== undefined) {
-            onChunk(chunk);
-          }
+          // On passe l'objet entier directement à AiChatView
+          onChunk(parsed);
         } catch {
           onChunk(cleanLine);
         }

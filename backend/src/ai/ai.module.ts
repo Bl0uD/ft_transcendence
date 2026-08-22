@@ -5,9 +5,10 @@ import { AiController } from './ai.controller';
 import { AiService } from './ai.service';
 import { ChatModule } from '../chat/chat.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { FriendsModule } from '../friends/friends.module';
 
 @Module({
-  imports: [ConfigModule, HttpModule, ChatModule, PrismaModule],
+  imports: [ConfigModule, HttpModule, ChatModule, PrismaModule, FriendsModule,],
   controllers: [AiController],
   providers: [AiService],
   exports: [AiService],

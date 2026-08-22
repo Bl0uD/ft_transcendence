@@ -210,7 +210,7 @@ export class FriendsService {
   /**
    * Obtenir la liste des amis acceptés
    */
-  async getFriends(userId: number) {
+  async getFriendsUsers(userId: number) {
     const friendships = await this.prisma.friendship.findMany({
       where: {
         status: FriendshipStatus.ACCEPTED,

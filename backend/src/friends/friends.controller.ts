@@ -17,8 +17,8 @@ export class FriendsController {
    * GET /friends - Liste des amis
    */
   @Get()
-  getFriends(@Req() req) {
-    return this.friendsService.getFriends(this.getUserId(req));
+  getFriendsUsers(@Req() req) {
+    return this.friendsService.getFriendsUsers(this.getUserId(req));
   }
 
   /**
