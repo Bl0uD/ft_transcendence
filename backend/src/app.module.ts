@@ -9,6 +9,9 @@ import { UsersModule } from './users/users.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { FriendsModule } from './friends/friends.module';
 import { AiModule } from './ai/ai.module';
+import { PostsModule } from './posts/posts.module';
+import { join } from 'path';
+
 
 @Module({
   imports: [
@@ -21,7 +24,8 @@ import { AiModule } from './ai/ai.module';
     ThrottlerModule.forRoot([{
       ttl: 60000,         // 60 secondes
       limit: 100,         // limite globale par défaut
-    }])
+    }]),
+	PostsModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

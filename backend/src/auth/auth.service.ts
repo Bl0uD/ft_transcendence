@@ -15,20 +15,29 @@ export class AuthService {
 
   async register(body: any) {
     try {
-      const userExists = await this.prisma.user.findUnique({
-        where: { email: body.email },
+      // 👇 Nettoyage des chaînes de caractères
+      const cleanEmail = body.email.trim();
+      const cleanUsername = body.username.trim();
+
+      const userExists = await this.prisma.user.findFirst({
+        where: { 
+          OR: [
+            { email: cleanEmail },
+            { username: cleanUsername }
+          ]
+        },
       });
 
       if (userExists) {
-        throw new ConflictException('Cet email est déjà utilisé.');
+        throw new ConflictException('Cet email ou ce nom d\'utilisateur est déjà utilisé.');
       }
 
       const hashedPassword = await bcrypt.hash(body.password, 10);
 
       const newUser = await this.prisma.user.create({
         data: {
-          email: body.email,
-          username: body.username,
+          email: cleanEmail,          // 👈 Utilise les variables nettoyées
+          username: cleanUsername,    // 👈 Utilise les variables nettoyées
           password: hashedPassword,
         },
         select: {
@@ -48,39 +57,55 @@ export class AuthService {
   }
 
   // Modifie pour accepter soit un body (login manuel), soit un user (login 42)
-  async login(bodyOrUser: any) {
+async login(bodyOrUser: any) {
     let user;
 
-    // CAS 1 : Login manuel
-    if (bodyOrUser.email && bodyOrUser.password) {
-      user = await this.prisma.user.findUnique({
-        where: { email: bodyOrUser.email },
+    // 🚀 CAS 1 : Login manuel
+	if (bodyOrUser.identifier && bodyOrUser.password) {
+      
+      // 👇 ON NETTOIE L'IDENTIFIANT ICI (supprime les espaces avant/après)
+      const cleanIdentifier = bodyOrUser.identifier.trim();
+      
+      console.log(`🔍 [LOGIN] Tentative avec l'identifiant : "${cleanIdentifier}"`);
+
+      user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: cleanIdentifier },
+            { username: cleanIdentifier }, // 👈 On pourrait même utiliser mode: 'insensitive' ici maintenant
+          ],
+        },
       });
 
-      if (!user || !user.password) {
-        throw new UnauthorizedException('Email ou mot de passe incorrect');
+      console.log(`👤 [LOGIN] Résultat en base de données :`, user ? `Trouvé (${user.username})` : `NON TROUVÉ`);
+
+      // 🚨 Erreurs spécifiques pour comprendre ce qui bloque
+      if (!user) {
+        throw new UnauthorizedException(`Aucun compte trouvé pour l'identifiant : ${bodyOrUser.identifier}`);
+      }
+
+      if (!user.password) {
+        throw new UnauthorizedException("Ce compte est lié à 42. Utilisez le bouton 'Se connecter avec 42'.");
       }
 
       const isMatch = await bcrypt.compare(bodyOrUser.password, user.password);
       if (!isMatch) {
-        throw new UnauthorizedException('Email ou mot de passe incorrect');
+        throw new UnauthorizedException("Mot de passe incorrect.");
       }
     } 
     // CAS 2 : Login API 42
     else if (bodyOrUser.id) {
       user = bodyOrUser;
     } else {
-      throw new UnauthorizedException('Données de connexion invalides');
+      throw new UnauthorizedException("Données de connexion invalides.");
     }
 
-    // 🔑 GENERATION DU JWT (Gestion 2FA incluse)
+    // 🔑 GENERATION DU JWT
     const payload = { 
       sub: user.id, 
       email: user.email, 
       username: user.username, 
       avatar: user.avatar,
-      // Si la 2FA est activee, il n'est pas encore authentifie 2FA. 
-      // Sinon, il l'est d'office.
       isTwoFactorAuthenticated: !user.isTwoFactorEnabled 
     };
 
@@ -117,13 +142,12 @@ export class AuthService {
     return user;
   }
 
-async validateUser(profile: { email: string, username: string, avatar: string, fortyTwoId: string }) {
+  async validateUser(profile: { email: string, username: string, avatar: string, fortyTwoId: string }) {
     let user = await this.prisma.user.findUnique({ 
       where: { fortyTwoId: profile.fortyTwoId } 
     });
 
     if (user) {
-      // 👈 On met à jour l'avatar si l'ancien est celui par défaut ou vide
       return this.prisma.user.update({
         where: { id: user.id },
         data: {

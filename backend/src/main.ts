@@ -20,9 +20,9 @@ async function bootstrap() {
     }),
   );
 
-  // 2. Servir le dossier des uploads de manière statique
+  // 2. Servir le dossier des uploads sous le préfixe '/api/uploads' pour correspondre aux appels du frontend
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
+    prefix: '/api/uploads/',
   });
 
   await app.listen(3000, '0.0.0.0');

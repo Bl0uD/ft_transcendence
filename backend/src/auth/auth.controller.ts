@@ -22,8 +22,9 @@ export class AuthController {
     };
   }
 
+  // 🚀 MODIFICATION : On précise qu'on attend un "identifier"
   @Post('login')
-  async login(@Body() body: any) {
+  async login(@Body() body: { identifier: string; password: string }) {
     return this.authService.login(body);
   }
 
@@ -39,7 +40,7 @@ export class AuthController {
   @UseGuards(AuthGuard('42')) // Ou le nom de ton guard 42
   async fortyTwoAuthRedirect(@Req() req, @Res() res: Response) {
     // 1. On genere le JWT pour l'utilisateur
-    const jwt = await this.authService.login(req.user); // Adapte selon le nom de ta methode
+    const jwt = await this.authService.login(req.user); 
     
     // 2. On redirige vers le frontend en passant le token dans l'URL
     const frontendUrl = process.env.FRONTEND_URL;
@@ -54,11 +55,9 @@ export class AuthController {
 
   // --- NOUVELLES ROUTES 2FA ---
 
-  // 1. Genere le QR Code (quand l'utilisateur clique sur "Activer la 2FA" dans ses parametres)
   @UseGuards(JwtAuthGuard)
   @Get('2fa/generate')
   async generate2fa(@Request() req) {
-    // On recupere le profil complet pour avoir l'email et l'ID
     const user = await this.authService.getProfile(req.user.userId || req.user.sub);
     
     const { otpauthUrl } = await this.twoFactorAuthService.generateTwoFactorAuthenticationSecret(user);
@@ -67,7 +66,6 @@ export class AuthController {
     return { qrCode }; 
   }
 
-  // 2. Confirme et active la 2FA (l'utilisateur scanne le QR et rentre son premier code)
   @UseGuards(JwtAuthGuard)
   @Post('2fa/turn-on')
   @HttpCode(200)
@@ -86,7 +84,6 @@ export class AuthController {
     return { message: '2FA activee avec succes' };
   }
 
-  // 3. Authentification finale (etape de login si le compte a la 2FA d'activee)
   @UseGuards(JwtAuthGuard)
   @Post('2fa/authenticate')
   @HttpCode(200)
@@ -101,7 +98,6 @@ export class AuthController {
       throw new UnauthorizedException('Code 2FA invalide');
     }
 
-    // Renvoie le nouveau JWT attestant que la 2FA a ete reussie
     return this.authService.loginWith2fa(userId);
   }
 }

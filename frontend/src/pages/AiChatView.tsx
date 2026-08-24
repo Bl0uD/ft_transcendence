@@ -67,6 +67,7 @@ export const AiChatView: React.FC = () => {
 
                 if (parsed.result.action === 'NAVIGATE' && parsed.result.target) {
                   setTimeout(() => {
+					console.log("✅🚨Target recue :", parsed.result.target);
                     navigate(parsed.result.target);
                   }, 1500);
                 }

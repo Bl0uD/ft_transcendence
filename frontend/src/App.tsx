@@ -7,7 +7,6 @@ import Settings from './pages/Settings';
 import Register from './pages/Register';
 import { ChatView } from './pages/ChatView';
 import { AiChatView } from './pages/AiChatView'; 
-import { SocialView } from './pages/SocialView'; 
 
 // Nouveaux imports pour l'architecture sociale
 import HomeFeed from './pages/HomeFeed';
@@ -65,7 +64,6 @@ function App() {
           <Route path="/settings" element={<Settings />} /> 
           <Route path="/chat" element={<ChatView />} />
           <Route path="/ai" element={<AiChatView />} />
-          <Route path="/social" element={<SocialView />} />
         </Route>
 
         {/* Profil Public dynamique (DOIT IMPÉRATIVEMENT ÊTRE À LA FIN) */}

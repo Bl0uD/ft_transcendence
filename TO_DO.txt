@@ -5,9 +5,8 @@ refaire la page /
 refaire le systemprompt dans ai.service : les actions marchent pas bien (actions fonctionnelles : NAVIGATE, ADD_FRIEND, SEND_MESSAGE a verifier ) -> ia trop faible
 comprendre pk le premier prompt est + long alors que tout est sense etre initialise dans le make up
 
-faire les posts
+mettre les posts dans le profil 
 
-faire des messages prives fonctionnels
+faire une notif sure la page /chat, salon en blanc qudn qqln parle
 
-faire un notif sure la paghe /chat, salon en blanc
-
+supprimer refresh apres erreur dans /login

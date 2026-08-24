@@ -1,13 +1,12 @@
-import { useAuthStore } from '../store/authStore';
-import { useNavigate } from 'react-router-dom';
 import React, { useState, useRef, useEffect } from 'react';
-import axios from '../api/axios';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 import { io } from 'socket.io-client';
-import TwoFactorSetup from '../components/TwoFactorSetup';
 
 const socket = io({ path: '/socket.io' });
 
+// --- INTERFACES ---
 interface User {
   id: number;
   username: string;
@@ -21,228 +20,246 @@ interface FriendRequest {
   requester: User;
 }
 
+interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  user: User;
+}
+
+interface Post {
+  id: number;
+  content: string;
+  imageUrl: string | null;
+  isPublic: boolean;
+  createdAt: string;
+  author: User;
+  likes: { id: number }[];
+  comments: Comment[];
+  _count: {
+    likes: number;
+    comments: number;
+  };
+}
+
 export default function HomeFeed() {
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const navigate = useNavigate();
   const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: any) => state.logout);
-  const updateUser = useAuthStore((state: any) => state.updateUser);
-  
-  const [username, setUsername] = useState(user?.username || '');
-  const [nickname, setNickname] = useState(user?.nickname || ''); // 👈 FIX : Ajout du state nickname
-  const [email, setEmail] = useState(user?.email || '');
-  const [password, setPassword] = useState('');
-  
-  const [showPassword, setShowPassword] = useState(false);
-  
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>(user?.avatar || '');
-  
-  const [status, setStatus] = useState<{ type: 'idle' | 'loading' | 'success' | 'error', message: string }>({ type: 'idle', message: '' });
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Synchroniser la preview et le nickname si le user change
-  useEffect(() => {
-    if (user?.avatar) {
-      setPreviewUrl(user.avatar);
-    }
-    if (user?.nickname) {
-      setNickname(user.nickname);
-    }
-  }, [user?.avatar, user?.nickname]);
-
-  // Nettoyage de l'URL blob
-  useEffect(() => {
-    return () => {
-      if (previewUrl && previewUrl !== user?.avatar && previewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl, user?.avatar]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        setStatus({ type: 'error', message: 'Le fichier dépasse la taille maximale (2MB).' });
-        return;
-      }
-      if (!file.type.startsWith('image/')) {
-        setStatus({ type: 'error', message: 'Veuillez sélectionner une image valide.' });
-        return;
-      }
-
-      setAvatarFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-      setStatus({ type: 'idle', message: '' });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatus({ type: 'loading', message: 'Mise à jour en cours...' });
-
-    try {
-      const formData = new FormData();
-      formData.append('username', username);
-
-      // Le nickname est optionnel
-      if (nickname) {
-        formData.append('nickname', nickname);
-      }
-
-      if (email) {
-        formData.append('email', email);
-      }
-
-      if (password) {
-        formData.append('password', password);
-      }
-
-      if (avatarFile) {
-        formData.append('avatar', avatarFile);
-      }
-
-      const response = await axios.put('/users/profile', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        }
-      });
-
-      setStatus({ type: 'success', message: 'Profil mis à jour avec succès !' });
-      
-      updateUser(response.data);
-      setAvatarFile(null);
-      setPassword('');
-
-    } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Une erreur est survenue lors de la mise à jour.';
-      setStatus({ type: 'error', message: errorMsg });
-    }
-  };
-
-
-
-// ** Gestion des onglets sociaux **//
-
-
-
+  // --- ÉTATS SOCIAUX ---
   const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'blocked'>('friends');
   const [friends, setFriends] = useState<User[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
-  
   const [targetUsername, setTargetUsername] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [socialError, setSocialError] = useState<string | null>(null);
 
-  // 🟢 3. On utilise une Ref pour stocker silencieusement l'ID de l'utilisateur connecté
+  // --- ÉTATS DU FEED ---
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newPostImage, setNewPostImage] = useState<File | null>(null);
+  const [newPostPreview, setNewPostPreview] = useState<string | null>(null);
+  const [isPublicPost, setIsPublicPost] = useState(true);
+  const [isPosting, setIsPosting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
+  const [openComments, setOpenComments] = useState<Record<number, boolean>>({});
+
   const userIdRef = useRef<number | null>(null);
 
-  // Charger les données selon l'onglet
-  const loadSocialData = async () => {
+  // --- CHARGEMENT DES DONNÉES ---
+  const loadData = async () => {
     try {
-      setError(null);
+      setSocialError(null);
       
-      // Récupérer le profil si on n'a pas encore l'ID courant
       if (!userIdRef.current) {
-        const profileRes = await api.get('/auth/profile');
-        // Ajuste selon ce que renvoie ta route profile (userId, sub, ou id)
-        userIdRef.current = profileRes.data.userId || profileRes.data.sub || profileRes.data.id; 
+        if (user?.id) {
+          userIdRef.current = user.id;
+        } else {
+          const profileRes = await api.get('/auth/profile');
+          userIdRef.current = profileRes.data.userId || profileRes.data.sub || profileRes.data.id; 
+        }
       }
 
-      const [friendsRes, pendingRes, blockedRes] = await Promise.all([
+      // On charge le feed et les données sociales en parallèle
+      const [friendsRes, pendingRes, blockedRes, feedRes] = await Promise.all([
         api.get<User[]>('/friends'),
         api.get<FriendRequest[]>('/friends/requests/pending'),
         api.get<User[]>('/friends/blocked'),
+        api.get<Post[]>('/posts/feed'),
       ]);
+      
       setFriends(friendsRes.data);
       setPendingRequests(pendingRes.data);
       setBlockedUsers(blockedRes.data);
+      setPosts(feedRes.data);
     } catch (err: any) {
-      console.error('Erreur lors du chargement des données sociales', err);
+      console.error('Erreur lors du chargement des données', err);
     }
   };
 
   useEffect(() => {
-    loadSocialData();
+    loadData();
 
-    // 🟢 4. Écoute de l'événement WebSocket "socialUpdate"
     socket.on('socialUpdate', (data: { userId: number }) => {
-	  console.log("🔥 SIGNAL REÇU DU BACKEND POUR L'ID :", data.userId);
-      console.log("ID ACTUEL SUR CE NAVIGATEUR :", userIdRef.current);
       if (data.userId === userIdRef.current) {
-		console.log("🔄 Rafraîchissement des données en cours...");
-        loadSocialData();
+        loadData();
       }
     });
 
-    // Nettoyage lors du démontage du composant
     return () => {
       socket.off('socialUpdate');
     };
   }, []);
 
-  // Envoyer une demande d'ami
+  // --- LOGIQUE FEED ---
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewPostImage(file);
+      setNewPostPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const submitPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPostContent.trim() && !newPostImage) return;
+
+    setIsPosting(true);
+    try {
+      const formData = new FormData();
+      formData.append('content', newPostContent);
+      formData.append('isPublic', isPublicPost.toString());
+      if (newPostImage) {
+        formData.append('image', newPostImage);
+      }
+
+      const res = await api.post('/posts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      // 🟢 FIX : On s'assure que likes et comments sont toujours des tableaux
+      const newPost = {
+        ...res.data,
+        likes: res.data.likes || [],
+        comments: res.data.comments || [],
+        _count: res.data._count || { likes: 0, comments: 0 }
+      };
+
+      // Ajouter le nouveau post au début de la liste
+      setPosts([newPost, ...posts]);
+      
+      // Reset form
+      setNewPostContent('');
+      setNewPostImage(null);
+      setNewPostPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      console.error('Erreur de création de post', err);
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const toggleLike = async (postId: number) => {
+    try {
+      const res = await api.post(`/posts/${postId}/like`);
+      const isLiked = res.data.liked;
+      
+      setPosts(posts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            likes: isLiked ? [{ id: userIdRef.current! }] : [],
+            _count: {
+              ...post._count,
+              likes: isLiked ? post._count.likes + 1 : post._count.likes - 1
+            }
+          };
+        }
+        return post;
+      }));
+    } catch (err) {
+      console.error('Erreur like', err);
+    }
+  };
+
+  const submitComment = async (e: React.FormEvent, postId: number) => {
+    e.preventDefault();
+    const content = commentInputs[postId];
+    if (!content?.trim()) return;
+
+    try {
+      const res = await api.post(`/posts/${postId}/comment`, { content });
+      
+      setPosts(posts.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comments: [...post.comments, res.data],
+            _count: { ...post._count, comments: post._count.comments + 1 }
+          };
+        }
+        return post;
+      }));
+
+      // Vider l'input du commentaire spécifique
+      setCommentInputs({ ...commentInputs, [postId]: '' });
+    } catch (err) {
+      console.error('Erreur commentaire', err);
+    }
+  };
+
+  // --- LOGIQUE SOCIALE ---
   const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetUsername.trim()) return;
-
     try {
-      setError(null);
+      setSocialError(null);
       await api.post('/friends/request', { username: targetUsername.trim() });
       setTargetUsername('');
-      alert('Demande d\'ami envoyée !');
-      // Plus besoin d'appeler manuellement loadSocialData() ici, le WebSocket va s'en charger !
+      loadData();
     } catch (err: any) {
-      const message = err.response?.data?.message || err.response?.data || 'Erreur lors de l\'envoi';
-      setError(typeof message === 'string' ? message : JSON.stringify(message));
+      const message = err.response?.data?.message || 'Erreur lors de l\'envoi';
+      setSocialError(typeof message === 'string' ? message : JSON.stringify(message));
     }
   };
 
-  // Accepter une demande
   const handleAcceptRequest = async (requestId: number) => {
-    try {
-      await api.put('/friends/accept', { requestId });
-      // Le rafraîchissement est géré par WebSocket
-    } catch (err: any) {
-      console.error('Erreur acceptation', err);
-    }
+    try { await api.put('/friends/accept', { requestId }); loadData(); } catch (err) {}
   };
 
-  // Bloquer un utilisateur
   const handleBlockUser = async (targetUserId: number) => {
-    try {
-      await api.post('/friends/block', { targetUserId });
-    } catch (err: any) {
-      console.error('Erreur blocage', err);
-    }
+    try { await api.post('/friends/block', { targetUserId }); loadData(); } catch (err) {}
   };
 
-  // Supprimer un ami ou débloquer
   const handleRemoveOrUnblock = async (targetUserId: number, isBlocked: boolean) => {
     try {
-      if (isBlocked) {
-        await api.delete(`/friends/block/${targetUserId}`);
-      } else {
-        await api.delete(`/friends/${targetUserId}`);
-      }
-    } catch (err: any) {
-      console.error('Erreur suppression/déblocage', err);
-    }
-
-// ** End of Gestion des onglets sociaux **//
-
-
+      if (isBlocked) await api.delete(`/friends/block/${targetUserId}`);
+      else await api.delete(`/friends/${targetUserId}`);
+      loadData();
+    } catch (err) {}
   };
 
   return (
-    <>
-      <div className="flex h-screen flex-col items-center justify-center bg-slate-900 text-white gap-4">
-        <h1 className="text-3xl font-bold">Bienvenue sur Transcendence 🏓</h1>
-        {user && <p className="text-slate-400">Connecté en tant que : {user.username}</p>}
-        
-        <div className="flex gap-3 mt-2">
+    <div className="flex h-screen bg-slate-900 text-white overflow-hidden">
+      
+      {/* --- NAVBAR --- */}
+      <nav className="fixed top-0 left-0 w-full h-16 bg-slate-800 border-b border-slate-700 z-50 flex items-center justify-between px-6 shadow-md">
+        <div 
+          onClick={() => navigate('/profile')}
+          className="flex items-center gap-3 cursor-pointer hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors"
+          title="Aller sur mon profil"
+        >
+          <img 
+            src={user?.avatar || '/default-avatar.png'} 
+            alt="Avatar" 
+            className="w-10 h-10 rounded-full object-cover border border-slate-600 shadow-sm"
+          />
+          <span className="font-semibold text-lg">{user?.username}</span>
+        </div>
+        <div className="flex items-center gap-4">
           <button 
             onClick={() => navigate('/chat')}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-medium transition-colors flex items-center gap-2"
@@ -250,278 +267,228 @@ export default function HomeFeed() {
             💬 Chat
           </button>
           <button 
-            onClick={() => setIsProfileOpen(true)}
-            className="fixed top-4 left-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
+            onClick={logout}
+            className="px-4 py-2 bg-red-600/90 hover:bg-red-500 rounded text-sm font-medium transition-colors shadow-md"
           >
-            Mon Profil
+            Se déconnecter
           </button>
         </div>
-      </div>
-      <div 
-          onClick={() => setIsProfileOpen(false)}
-          className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
-            isProfileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-          ></div>
-      <div 
-        className={`fixed top-0 left-0 h-full w-80 sm:w-96 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
-          isProfileOpen ? 'translate-x-0' : '-translate-x-full delay-200'
-        }`}
-      >
-          <div className="min-h-screen max-h-full bg-slate-900 text-white flex flex-col items-center justify-center p-6 gap-6 overflow-y-auto">
+      </nav>
+
+      {/* --- CONTENU --- */}
+      <div className="flex w-full pt-16 h-full">
+        
+        {/* --- ZONE DU FEED (CENTRE) --- */}
+        <main className="flex-1 overflow-y-auto p-6 scroll-smooth">
+          <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-20">
             
-            <button 
-              onClick={() => setIsProfileOpen(false)}
-              className="absolute top-4 left-4 text-slate-400 hover:text-white transition-colors focus:outline-none"
-              aria-label="Back"
-            >
-              ← Retour
-            </button>
-            {user && (
-              <div className="text-center">
-                <h1 className="text-xl text-slate-300">
-                  Connecté en tant que : <span className="font-semibold text-white">{user.username}</span> ({user.email})
-                </h1>
-                <p className="text-slate-400 text-sm mt-1">Welcome to Transcendence</p>
-              </div>
-            )}
+            <h1 className="text-2xl font-bold text-slate-100">Fil d'actualité</h1>
 
-            <div className="w-full max-w-md bg-slate-800 p-8 border border-slate-700 rounded-lg shadow-lg">
-              <h2 className="text-2xl font-bold mb-6 text-white">Paramètres du Profil</h2>
-
-              {status.message && (
-                <div className={`p-3 mb-4 rounded text-sm ${status.type === 'error' ? 'bg-red-900/50 text-red-200 border border-red-700' : 'bg-green-900/50 text-green-200 border border-green-700'}`}>
-                  {status.message}
+            {/* CRÉATION DE POST */}
+            <div className="w-full bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm">
+              <form onSubmit={submitPost} className="flex flex-col gap-4">
+                <div className="flex gap-4">
+                  <img src={user?.avatar || '/default-avatar.png'} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-slate-600" />
+                  <textarea 
+                    placeholder={`Quoi de neuf, ${user?.username} ?`}
+                    value={newPostContent}
+                    onChange={(e) => setNewPostContent(e.target.value)}
+                    className="flex-1 bg-slate-900/50 rounded-lg py-3 px-4 text-slate-200 border border-slate-700 hover:border-slate-500 focus:border-indigo-500 focus:outline-none transition-colors resize-none min-h-[80px]"
+                  />
                 </div>
-              )}
-
-              <form onSubmit={handleSubmit} className="space-y-5">
                 
-                {/* Avatar Section */}
-                <div className="flex flex-col items-center">
-                  <div className="relative w-28 h-28 mb-3 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                    <img 
-                      src={previewUrl || '/default-avatar.png'} 
-                      alt="Avatar de profil" 
-                      className="w-full h-full object-cover rounded-full border-2 border-slate-600 shadow-md transition group-hover:opacity-75"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/40 rounded-full">
-                      <span className="text-white text-xs px-2 py-1 bg-black/60 rounded">Modifier</span>
-                    </div>
-                  </div>
-                  
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    onChange={handleFileChange} 
-                    accept="image/jpeg, image/png, image/webp"
-                    className="hidden" 
-                  />
-                  <p className="text-xs text-slate-400">Formats acceptés : JPG, PNG, WEBP (Max: 2MB)</p>
-                </div>
-
-                {/* Username Field */}
-                <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-slate-300 mb-1">
-                    New Username
-                  </label>
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    minLength={3}
-                    maxLength={20}
-                  />
-                </div>
-
-                {/* Nickname Field (Optionnel) */}
-                <div>
-                  <label htmlFor="nickname" className="block text-sm font-medium text-slate-300 mb-1">
-                    New Nickname (Optionnel)
-                  </label>
-                  <input
-                    id="nickname"
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    maxLength={20}
-                  />
-                </div>
-
-                {/* Email Field */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
-                    New Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                {/* Password Field with Eye Toggle */}
-                <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1">
-                    New Password
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full p-2.5 pr-10 bg-slate-900 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      minLength={3}
-                      maxLength={20}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 text-slate-400 hover:text-white transition-colors focus:outline-none"
-                      aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                {newPostPreview && (
+                  <div className="relative ml-14">
+                    <img src={newPostPreview} alt="Preview" className="rounded-lg max-h-60 object-contain bg-slate-900 border border-slate-700" />
+                    <button 
+                      type="button" 
+                      onClick={() => { setNewPostImage(null); setNewPostPreview(null); if(fileInputRef.current) fileInputRef.current.value = ''; }}
+                      className="absolute top-2 right-2 bg-slate-800/80 text-white rounded-full p-1.5 hover:bg-red-500 transition-colors"
                     >
-                      {showPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                        </svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.274 4.057 5.065 7 9.542 7 4.477 0 8.268-2.943 9.542-7-1.274-4.057-5.065-7-9.542-7-4.477 0-8.268 2.943-9.542 7z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                      )}
+                      ✕
                     </button>
                   </div>
+                )}
+
+                <div className="flex justify-between items-center ml-14">
+                  <div className="flex gap-4 items-center">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-indigo-400 hover:text-indigo-300 font-medium text-sm flex items-center gap-2 transition-colors">
+                      📸 Ajouter une image
+                    </button>
+                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
+                    
+                    <select 
+                      value={isPublicPost ? "public" : "friends"} 
+                      onChange={(e) => setIsPublicPost(e.target.value === "public")}
+                      className="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded p-1.5 focus:outline-none"
+                    >
+                      <option value="public">🌐 Public</option>
+                      <option value="friends">👥 Amis uniquement</option>
+                    </select>
+                  </div>
+                  
+                  <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="bg-indigo-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 transition-colors">
+                    {isPosting ? 'Envoi...' : 'Publier'}
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={status.type === 'loading'}
-                  className="w-full bg-blue-600 text-white font-semibold py-2.5 px-4 rounded hover:bg-blue-500 transition disabled:opacity-50 mt-2"
-                >
-                  {status.type === 'loading' ? 'Enregistrement...' : 'Enregistrer les modifications'}
-                </button>
               </form>
-              <TwoFactorSetup />
-            </div>  
-            <button 
-              onClick={logout}
-              className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded text-sm font-medium transition-colors shadow-md"
-            >
-              Se déconnecter
-            </button>
-          </div>
-      </div>
-      <div 
-      className={`fixed top-0 left-80 sm:left-96 h-full w-80 sm:w-96 bg-slate-900 shadow-2xl z-50 origin-left transform transition-transform duration-300 ease-out ${
-        isProfileOpen ? 'scale-x-100 delay-200 ' : 'scale-x-0 pointer-events-none'
-        }`}
-      >
-        <div className="max-w-4xl mx-auto p-6 overflow-y-auto">
-            <h1 className="text-2xl font-bold mb-6 text-white">Gestion Sociale</h1>
-
-            {/* Formulaire d'ajout par Pseudo */}
-            <form onSubmit={handleSendRequest} className="mb-6 flex gap-2">
-              <input
-                type="text"
-                placeholder="Nom d'utilisateur (ex: Marvin)..."
-                value={targetUsername}
-                onChange={(e) => setTargetUsername(e.target.value)}
-                className="p-2 border border-gray-700 rounded bg-gray-800 text-white flex-1 focus:outline-none focus:border-blue-500"
-              />
-              <button type="submit" className="bg-blue-600 px-4 py-2 text-white rounded hover:bg-blue-700 transition">
-                Ajouter
-              </button>
-            </form>
-            {error && <p className="text-red-400 mb-4">{error}</p>}
-
-            {/* Onglets */}
-            <div className="flex border-b border-gray-700 mb-4">
-              <button
-                onClick={() => setActiveTab('friends')}
-                className={`px-4 py-2 text-white border-b-2 ${activeTab === 'friends' ? 'border-blue-500 font-bold' : 'border-transparent'}`}
-              >
-                Amis ({friends.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('pending')}
-                className={`px-4 py-2 text-white border-b-2 ${activeTab === 'pending' ? 'border-blue-500 font-bold' : 'border-transparent'}`}
-              >
-                En attente ({pendingRequests.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('blocked')}
-                className={`px-4 py-2 text-white border-b-2 ${activeTab === 'blocked' ? 'border-blue-500 font-bold' : 'border-transparent'}`}
-              >
-                Bloqués ({blockedUsers.length})
-              </button>
             </div>
 
-            {/* Onglet Amis */}
-            {activeTab === 'friends' && (
-              <div className="space-y-2">
-                {friends.length === 0 ? <p className="text-gray-400">Aucun ami pour le moment.</p> : (
-                  friends.map((friend) => (
-                    <div key={friend.id} className="flex justify-between items-center p-3 bg-gray-800 rounded">
-                      <span className="text-white">{friend.username}</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleBlockUser(friend.id)} className="px-3 py-1 bg-yellow-600 text-white rounded text-sm">
-                          Bloquer
-                        </button>
-                        <button onClick={() => handleRemoveOrUnblock(friend.id, false)} className="px-3 py-1 bg-red-600 text-white rounded text-sm">
-                          Retirer
-                        </button>
+            {/* LISTE DES POSTS */}
+            {posts.length === 0 ? (
+              <div className="text-center p-10 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <span className="text-4xl mb-3 block">📭</span>
+                <p className="text-slate-400">Aucun post à afficher pour le moment.</p>
+              </div>
+            ) : (
+              posts.map((post) => (
+                <div key={post.id} className="w-full bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden flex flex-col">
+                  {/* Header Post */}
+                  <div className="p-4 flex items-center gap-3">
+                    <img src={post.author.avatar || '/default-avatar.png'} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-slate-600" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-white">{post.author.username}</span>
+                        <span className="text-xs text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-700">
+                          {post.isPublic ? '🌐 Public' : '👥 Amis'}
+                        </span>
                       </div>
+                      <span className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleString()}</span>
                     </div>
-                  ))
-                )}
-              </div>
-            )}
+                  </div>
 
-            {/* Onglet En Attente */}
-            {activeTab === 'pending' && (
-              <div className="space-y-2">
-                {pendingRequests.length === 0 ? <p className="text-gray-400">Aucune demande en attente.</p> : (
-                  pendingRequests.map((req) => (
-                    <div key={req.id} className="flex justify-between items-center p-3 bg-gray-800 rounded">
-                      <span className="text-white">{req.requester.username} vous a envoyé une demande.</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => handleAcceptRequest(req.id)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">
-                          Accepter
-                        </button>
+                  {/* Contenu textuel */}
+                  {post.content && (
+                    <div className="px-4 pb-3 text-slate-200 whitespace-pre-wrap">
+                      {post.content}
+                    </div>
+                  )}
+
+				  {/* Image éventuelle */}
+				  {post.imageUrl && (
+				  <div className="w-full bg-slate-900 border-y border-slate-700 flex justify-center max-h-[500px]">
+					  {/* On utilise /api (ou l'URL de base de ton Axios) pour que ça passe par ton proxy HTTPS */}
+					  <img src={`/api${post.imageUrl}`} alt="Post content" className="object-contain w-full h-full" />
+				  </div>
+				  )}
+
+                  {/* Actions (Likes / Commentaires) */}
+                  <div className="px-4 py-3 flex gap-6 border-t border-slate-700/50">
+                    <button 
+                      onClick={() => toggleLike(post.id)}
+                      className={`flex items-center gap-2 text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
+                    </button>
+                    <button 
+                      onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})}
+                      className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      💬 {post._count.comments} Commentaires
+                    </button>
+                  </div>
+
+                  {/* Zone de commentaires */}
+                  {openComments[post.id] && (
+                    <div className="bg-slate-900/50 p-4 border-t border-slate-700">
+                      
+                      {/* Liste des commentaires */}
+                      <div className="space-y-3 mb-4 max-h-60 overflow-y-auto pr-2">
+                        {post.comments.length === 0 ? (
+                          <p className="text-slate-500 text-sm text-center">Soyez le premier à commenter !</p>
+                        ) : (
+                          post.comments.map(comment => (
+                            <div key={comment.id} className="flex gap-3 text-sm">
+                              <img src={comment.user.avatar || '/default-avatar.png'} className="w-6 h-6 rounded-full object-cover" alt="avatar" />
+                              <div className="bg-slate-800 px-3 py-2 rounded-xl rounded-tl-none border border-slate-700">
+                                <span className="font-semibold text-slate-300 mr-2">{comment.user.username}</span>
+                                <span className="text-slate-200">{comment.content}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
 
-            {/* Onglet Bloqués */}
-            {activeTab === 'blocked' && (
-              <div className="space-y-2">
-                {blockedUsers.length === 0 ? <p className="text-gray-400">Aucun utilisateur bloqué.</p> : (
-                  blockedUsers.map((user) => (
-                    <div key={user.id} className="flex justify-between items-center p-3 bg-gray-800 rounded">
-                      <span className="text-white">{user.username}</span>
-                      <button onClick={() => handleRemoveOrUnblock(user.id, true)} className="px-3 py-1 bg-gray-600 text-white rounded text-sm">
-                        Débloquer
-                      </button>
+                      {/* Input commentaire */}
+                      <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2">
+                        <img src={user?.avatar || '/default-avatar.png'} className="w-8 h-8 rounded-full object-cover" alt="avatar" />
+                        <input 
+                          type="text" 
+                          placeholder="Ajouter un commentaire..." 
+                          value={commentInputs[post.id] || ''}
+                          onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})}
+                          className="flex-1 bg-slate-800 border border-slate-600 rounded-full px-4 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </form>
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+                </div>
+              ))
             )}
           </div>
+        </main>
+
+        {/* --- PANNEAU SOCIAL (DROITE) --- */}
+        <aside className="hidden lg:flex w-80 xl:w-96 bg-slate-800 border-l border-slate-700 flex-col h-full shadow-xl z-10">
+          <div className="p-5 border-b border-slate-700 bg-slate-800/95 sticky top-0">
+            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">👥 Social</h2>
+            <form onSubmit={handleSendRequest} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Ajouter un ami (pseudo)..."
+                value={targetUsername}
+                onChange={(e) => setTargetUsername(e.target.value)}
+                className="p-2 border border-slate-600 rounded bg-slate-900 text-white flex-1 focus:outline-none focus:border-blue-500 text-sm"
+              />
+              <button type="submit" className="bg-blue-600 px-3 py-2 text-white rounded hover:bg-blue-500 transition text-sm font-medium">Ajouter</button>
+            </form>
+            {socialError && <p className="text-red-400 text-xs mt-2">{socialError}</p>}
+          </div>
+
+          <div className="flex border-b border-slate-700 text-sm bg-slate-800">
+            <button onClick={() => setActiveTab('friends')} className={`flex-1 py-3 text-center transition-colors ${activeTab === 'friends' ? 'text-blue-400 border-b-2 border-blue-500 font-semibold' : 'text-slate-400 hover:text-slate-200'}`}>Amis ({friends.length})</button>
+            <button onClick={() => setActiveTab('pending')} className={`flex-1 py-3 text-center transition-colors ${activeTab === 'pending' ? 'text-blue-400 border-b-2 border-blue-500 font-semibold' : 'text-slate-400 hover:text-slate-200'}`}>Demandes ({pendingRequests.length})</button>
+            <button onClick={() => setActiveTab('blocked')} className={`flex-1 py-3 text-center transition-colors ${activeTab === 'blocked' ? 'text-blue-400 border-b-2 border-blue-500 font-semibold' : 'text-slate-400 hover:text-slate-200'}`}>Bloqués ({blockedUsers.length})</button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-900/20">
+            {activeTab === 'friends' && (
+              friends.length === 0 ? <p className="text-slate-500 text-center mt-4 text-sm">Aucun ami pour le moment.</p> : (
+                friends.map((friend) => (
+                  <div key={friend.id} className="flex justify-between items-center p-3 bg-slate-800 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors">
+                    <span className="text-slate-200 font-medium">{friend.username}</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleBlockUser(friend.id)} className="px-2 py-1 bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600 hover:text-white rounded text-xs transition-colors">Bloquer</button>
+                      <button onClick={() => handleRemoveOrUnblock(friend.id, false)} className="px-2 py-1 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded text-xs transition-colors">Retirer</button>
+                    </div>
+                  </div>
+                ))
+              )
+            )}
+            {activeTab === 'pending' && (
+              pendingRequests.length === 0 ? <p className="text-slate-500 text-center mt-4 text-sm">Aucune demande en attente.</p> : (
+                pendingRequests.map((req) => (
+                  <div key={req.id} className="flex flex-col gap-2 p-3 bg-slate-800 border border-slate-700 rounded-lg">
+                    <span className="text-slate-200 text-sm"><span className="font-semibold text-white">{req.requester.username}</span> vous a envoyé une demande.</span>
+                    <button onClick={() => handleAcceptRequest(req.id)} className="w-full py-1.5 bg-green-600/90 hover:bg-green-500 text-white rounded text-sm font-medium transition-colors">Accepter</button>
+                  </div>
+                ))
+              )
+            )}
+            {activeTab === 'blocked' && (
+              blockedUsers.length === 0 ? <p className="text-slate-500 text-center mt-4 text-sm">Aucun utilisateur bloqué.</p> : (
+                blockedUsers.map((user) => (
+                  <div key={user.id} className="flex justify-between items-center p-3 bg-slate-800 border border-slate-700 rounded-lg">
+                    <span className="text-slate-400 line-through">{user.username}</span>
+                    <button onClick={() => handleRemoveOrUnblock(user.id, true)} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs transition-colors">Débloquer</button>
+                  </div>
+                ))
+              )
+            )}
+          </div>
+        </aside>
+
       </div>
-    </>
+    </div>
   );
 }

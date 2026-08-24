@@ -9,10 +9,10 @@ export default function Login() {
   const [searchParams] = useSearchParams(); 
   
   const loginGlobal = useAuthStore((state) => state.login);
-  // AJOUT : On récupère l'état requires2FA depuis le store
   const requires2FA = useAuthStore((state) => state.requires2FA); 
 
-  const [email, setEmail] = useState('');
+  // 🚀 CORRECTION : Utilisation de 'identifier' au lieu de 'email'
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,8 +32,6 @@ export default function Login() {
         navigate('/', { replace: true });
       })
       .catch(() => {
-        // Si le profil nécessite une 2FA, l'intercepteur Axios va l'attraper ici
-        // et passer requires2FA à true automatiquement.
         setError("Impossible de récupérer le profil utilisateur 42.");
       });
     }
@@ -45,7 +43,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      // 🚀 CORRECTION : Envoi de 'identifier' au backend
+      const response = await api.post('/auth/login', { identifier, password });
+      
       localStorage.setItem('access_token', response.data.access_token);
       loginGlobal(response.data.user, response.data.access_token);
       navigate('/');
@@ -63,9 +63,7 @@ export default function Login() {
     window.location.href = '/api/auth/42';
   };
 
-  // --- AJOUT : BASCULE SUR L'ÉCRAN 2FA ---
-  // Si le store indique que la 2FA est requise, on masque le formulaire 
-  // de login et on affiche uniquement le composant de vérification.
+  // --- BASCULE SUR L'ÉCRAN 2FA ---
   if (requires2FA) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
@@ -98,19 +96,19 @@ export default function Login() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4 rounded-md shadow-sm">
             <div>
-              <label htmlFor="email-address" className="block text-sm font-medium text-slate-300 mb-1">
-                Adresse email
+              <label htmlFor="identifier" className="block text-sm font-medium text-slate-300 mb-1">
+                Email ou Nom d'utilisateur
               </label>
               <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                name="identifier"
+                type="text" 
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)} 
                 className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
-                placeholder="you@example.com"
+                placeholder="you@example.com ou username"
               />
             </div>
             <div>
