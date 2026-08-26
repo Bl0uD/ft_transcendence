@@ -139,7 +139,7 @@ export default function HomeFeed() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // 🟢 FIX : On s'assure que likes et comments sont toujours des tableaux
+      // On s'assure que likes et comments sont toujours des tableaux
       const newPost = {
         ...res.data,
         likes: res.data.likes || [],
@@ -248,7 +248,7 @@ export default function HomeFeed() {
       {/* --- NAVBAR --- */}
       <nav className="fixed top-0 left-0 w-full h-16 bg-slate-800 border-b border-slate-700 z-50 flex items-center justify-between px-6 shadow-md">
         <div 
-          onClick={() => navigate('/profile')}
+          onClick={() => navigate(`/${user?.username}`)}
           className="flex items-center gap-3 cursor-pointer hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors"
           title="Aller sur mon profil"
         >
@@ -288,7 +288,12 @@ export default function HomeFeed() {
             <div className="w-full bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm">
               <form onSubmit={submitPost} className="flex flex-col gap-4">
                 <div className="flex gap-4">
-                  <img src={user?.avatar || '/default-avatar.png'} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-slate-600" />
+                  <img 
+                    src={user?.avatar || '/default-avatar.png'} 
+                    alt="Avatar" 
+                    className="w-10 h-10 rounded-full object-cover border border-slate-600 cursor-pointer hover:opacity-80 transition-opacity" 
+                    onClick={() => navigate(`/${user?.username}`)} 
+                  />
                   <textarea 
                     placeholder={`Quoi de neuf, ${user?.username} ?`}
                     value={newPostContent}
@@ -345,10 +350,20 @@ export default function HomeFeed() {
                 <div key={post.id} className="w-full bg-slate-800 rounded-xl border border-slate-700 shadow-sm overflow-hidden flex flex-col">
                   {/* Header Post */}
                   <div className="p-4 flex items-center gap-3">
-                    <img src={post.author.avatar || '/default-avatar.png'} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-slate-600" />
+                    <img 
+                      src={post.author.avatar || '/default-avatar.png'} 
+                      alt="Avatar" 
+                      className="w-10 h-10 rounded-full object-cover border border-slate-600 cursor-pointer hover:opacity-80 transition-opacity" 
+                      onClick={() => navigate(`/${post.author.username}`)}
+                    />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white">{post.author.username}</span>
+                        <span 
+                          className="font-semibold text-white cursor-pointer hover:underline"
+                          onClick={() => navigate(`/${post.author.username}`)}
+                        >
+                          {post.author.username}
+                        </span>
                         <span className="text-xs text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-700">
                           {post.isPublic ? '🌐 Public' : '👥 Amis'}
                         </span>
@@ -364,13 +379,12 @@ export default function HomeFeed() {
                     </div>
                   )}
 
-				  {/* Image éventuelle */}
-				  {post.imageUrl && (
-				  <div className="w-full bg-slate-900 border-y border-slate-700 flex justify-center max-h-[500px]">
-					  {/* On utilise /api (ou l'URL de base de ton Axios) pour que ça passe par ton proxy HTTPS */}
-					  <img src={`/api${post.imageUrl}`} alt="Post content" className="object-contain w-full h-full" />
-				  </div>
-				  )}
+                  {/* Image éventuelle */}
+                  {post.imageUrl && (
+                  <div className="w-full bg-slate-900 border-y border-slate-700 flex justify-center max-h-[500px]">
+                      <img src={`/api${post.imageUrl}`} alt="Post content" className="object-contain w-full h-full" />
+                  </div>
+                  )}
 
                   {/* Actions (Likes / Commentaires) */}
                   <div className="px-4 py-3 flex gap-6 border-t border-slate-700/50">
@@ -399,9 +413,19 @@ export default function HomeFeed() {
                         ) : (
                           post.comments.map(comment => (
                             <div key={comment.id} className="flex gap-3 text-sm">
-                              <img src={comment.user.avatar || '/default-avatar.png'} className="w-6 h-6 rounded-full object-cover" alt="avatar" />
+                              <img 
+                                src={comment.user.avatar || '/default-avatar.png'} 
+                                className="w-6 h-6 rounded-full object-cover cursor-pointer hover:opacity-80" 
+                                alt="avatar" 
+                                onClick={() => navigate(`/${comment.user.username}`)}
+                              />
                               <div className="bg-slate-800 px-3 py-2 rounded-xl rounded-tl-none border border-slate-700">
-                                <span className="font-semibold text-slate-300 mr-2">{comment.user.username}</span>
+                                <span 
+                                  className="font-semibold text-slate-300 mr-2 cursor-pointer hover:underline"
+                                  onClick={() => navigate(`/${comment.user.username}`)}
+                                >
+                                  {comment.user.username}
+                                </span>
                                 <span className="text-slate-200">{comment.content}</span>
                               </div>
                             </div>
@@ -456,7 +480,12 @@ export default function HomeFeed() {
               friends.length === 0 ? <p className="text-slate-500 text-center mt-4 text-sm">Aucun ami pour le moment.</p> : (
                 friends.map((friend) => (
                   <div key={friend.id} className="flex justify-between items-center p-3 bg-slate-800 border border-slate-700 rounded-lg hover:border-slate-600 transition-colors">
-                    <span className="text-slate-200 font-medium">{friend.username}</span>
+                    <span 
+                      className="text-slate-200 font-medium cursor-pointer hover:underline hover:text-indigo-400"
+                      onClick={() => navigate(`/${friend.username}`)}
+                    >
+                      {friend.username}
+                    </span>
                     <div className="flex gap-2">
                       <button onClick={() => handleBlockUser(friend.id)} className="px-2 py-1 bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600 hover:text-white rounded text-xs transition-colors">Bloquer</button>
                       <button onClick={() => handleRemoveOrUnblock(friend.id, false)} className="px-2 py-1 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded text-xs transition-colors">Retirer</button>
@@ -469,7 +498,14 @@ export default function HomeFeed() {
               pendingRequests.length === 0 ? <p className="text-slate-500 text-center mt-4 text-sm">Aucune demande en attente.</p> : (
                 pendingRequests.map((req) => (
                   <div key={req.id} className="flex flex-col gap-2 p-3 bg-slate-800 border border-slate-700 rounded-lg">
-                    <span className="text-slate-200 text-sm"><span className="font-semibold text-white">{req.requester.username}</span> vous a envoyé une demande.</span>
+                    <span className="text-slate-200 text-sm">
+                      <span 
+                        className="font-semibold text-white cursor-pointer hover:underline"
+                        onClick={() => navigate(`/${req.requester.username}`)}
+                      >
+                        {req.requester.username}
+                      </span> vous a envoyé une demande.
+                    </span>
                     <button onClick={() => handleAcceptRequest(req.id)} className="w-full py-1.5 bg-green-600/90 hover:bg-green-500 text-white rounded text-sm font-medium transition-colors">Accepter</button>
                   </div>
                 ))

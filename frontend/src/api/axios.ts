@@ -43,7 +43,7 @@ api.interceptors.response.use(
       if (message === "2FA validation required") {
         console.warn('🟡 2FA requise. Bascule vers le formulaire OTP.');
         useAuthStore.getState().setRequires2FA(true);
-      } else {
+      } else if (requestUrl && !requestUrl.includes('/auth/login')) {
         // Vrai 401 (Token expiré, invalide, ou absent sur route protégée)
         console.warn('🔴 Session expirée ou invalide. Redirection vers le login.');
         
