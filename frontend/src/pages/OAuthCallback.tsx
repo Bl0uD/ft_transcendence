@@ -19,7 +19,7 @@ export default function LoginSuccess() {
       loginGlobal({} as any, token); 
       navigate('/', { replace: true });
     } else {
-      navigate('/login', { replace: true });
+      navigate('/', { replace: true });
     }
   }, [searchParams, navigate, loginGlobal]);
 

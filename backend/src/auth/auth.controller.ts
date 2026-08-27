@@ -44,7 +44,7 @@ export class AuthController {
     
     // 2. On redirige vers le frontend en passant le token dans l'URL
     const frontendUrl = process.env.FRONTEND_URL;
-    res.redirect(`${frontendUrl}/login?token=${jwt.access_token}`);
+    res.redirect(`${frontendUrl}/?token=${jwt.access_token}`);
   }
 
   @UseGuards(JwtTwoFactorGuard)

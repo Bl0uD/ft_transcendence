@@ -44,6 +44,7 @@ export class AuthService {
           id: true,
           email: true,
           username: true,
+          nickname: true, // 🟢 FIX : On sélectionne le nickname dès l'inscription
           createdAt: true,
         }
       });
@@ -57,11 +58,11 @@ export class AuthService {
   }
 
   // Modifie pour accepter soit un body (login manuel), soit un user (login 42)
-async login(bodyOrUser: any) {
+  async login(bodyOrUser: any) {
     let user;
 
     // 🚀 CAS 1 : Login manuel
-	if (bodyOrUser.identifier && bodyOrUser.password) {
+    if (bodyOrUser.identifier && bodyOrUser.password) {
       
       // 👇 ON NETTOIE L'IDENTIFIANT ICI (supprime les espaces avant/après)
       const cleanIdentifier = bodyOrUser.identifier.trim();
@@ -72,7 +73,7 @@ async login(bodyOrUser: any) {
         where: {
           OR: [
             { email: cleanIdentifier },
-            { username: cleanIdentifier }, // 👈 On pourrait même utiliser mode: 'insensitive' ici maintenant
+            { username: cleanIdentifier }, 
           ],
         },
       });
@@ -105,6 +106,7 @@ async login(bodyOrUser: any) {
       sub: user.id, 
       email: user.email, 
       username: user.username, 
+      nickname: user.nickname, // 🟢 FIX : Ajout du nickname dans le payload
       avatar: user.avatar,
       isTwoFactorAuthenticated: !user.isTwoFactorEnabled 
     };
@@ -115,6 +117,7 @@ async login(bodyOrUser: any) {
         id: user.id,
         email: user.email,
         username: user.username,
+        nickname: user.nickname, // 🟢 FIX : C'est ICI qu'il manquait le nickname !
         createdAt: user.createdAt,
         avatar: user.avatar,
         isTwoFactorEnabled: user.isTwoFactorEnabled,
@@ -129,6 +132,7 @@ async login(bodyOrUser: any) {
         id: true,
         email: true,
         username: true,
+        nickname: true,
         createdAt: true,
         avatar: true,
         isTwoFactorEnabled: true,
@@ -210,7 +214,8 @@ async login(bodyOrUser: any) {
     const payload = { 
       sub: user.id, 
       email: user.email, 
-      username: user.username, 
+      username: user.username,
+      nickname: user.nickname, // 🟢 FIX : Ajout ici aussi au cas où
       isTwoFactorAuthenticated: true 
     };
     

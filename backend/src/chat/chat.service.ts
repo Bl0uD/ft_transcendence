@@ -10,14 +10,14 @@ export class ChatService {
       where: {
         OR: [
           { type: 'PUBLIC' },
-          { members: { some: { userId } } } // Récupère aussi TES salons privés/DMs
+          { members: { some: { userId } } } 
         ]
       },
       include: {
-        // 🟢 NOUVEAU : On inclut les membres et leurs pseudos !
         members: {
           include: {
-            user: { select: { id: true, username: true, avatar: true } }
+            // 🟢 FIX : Ajout de nickname: true ici
+            user: { select: { id: true, username: true, nickname: true, avatar: true } }
           }
         }
       },
@@ -25,9 +25,8 @@ export class ChatService {
     });
   }
 
-  // 1. Création ou récupération d'un DM (Le DM est un channel comme les autres)
+  // 1. Création ou récupération d'un DM
   async getOrCreateDirectMessage(userId1: number, userId2: number) {
-    // On cherche un salon DIRECT où les DEUX utilisateurs sont présents
     const existingChannels = await this.prisma.channel.findMany({
       where: { type: 'DIRECT' },
       include: { members: true },
@@ -40,12 +39,11 @@ export class ChatService {
 
     if (dmChannel) return { channel: dmChannel, isNewChannel: false };
 
-    // S'il n'existe pas, on crée un Channel standard, mais limité à 2 !
     const newChannel = await this.prisma.channel.create({
       data: {
-        name: null, // Pas de nom fixe, le front affichera le pseudo de l'autre
+        name: null,
         type: 'DIRECT',
-        userLimit: 2, // 🟢 La limite stricte de 2 membres
+        userLimit: 2,
         members: {
           create: [
             { userId: userId1, role: 'MEMBER' },
@@ -67,11 +65,9 @@ export class ChatService {
 
     if (!channel) throw new Error("Ce salon n'existe pas.");
 
-    // S'il est déjà membre, on le laisse passer
     const isAlreadyMember = channel.members.some(m => m.userId === userId);
     if (isAlreadyMember) return channel;
 
-    // 🟢 VÉRIFICATION DE LA LIMITE DE PLACES (Fonctionne pour les DMs et les autres)
     if (channel.userLimit && channel.members.length >= channel.userLimit) {
       throw new Error(`Ce salon est complet (limite de ${channel.userLimit} membres).`);
     }
@@ -80,7 +76,6 @@ export class ChatService {
       throw new ForbiddenException("Vous n'êtes pas autorisé à rejoindre ce salon privé.");
     }
 
-    // On l'ajoute officiellement au salon
     await this.prisma.channelMember.create({
       data: { userId, channelId, role: 'MEMBER' }
     });
@@ -88,7 +83,7 @@ export class ChatService {
     return channel;
   }
 
-  // 3. Vérification des accès (Lecture/Écriture)
+  // 3. Vérification des accès
   async checkAccess(channelId: number, userId: number) {
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
@@ -101,9 +96,8 @@ export class ChatService {
     return channel.members.some((member) => member.userId === userId);
   }
 
-  // 4. Sauvegarder un message (Utilise l'ID du channel)
+  // 4. Sauvegarder un message
   async saveMessage(data: { content: string; channelId: number; authorId: number }) {
-    // 🔒 Vérifie l'accès avant d'écrire
     const hasAccess = await this.checkAccess(data.channelId, data.authorId);
     if (!hasAccess) throw new ForbiddenException("Non autorisé à envoyer un message ici.");
 
@@ -114,21 +108,22 @@ export class ChatService {
         sender: { connect: { id: data.authorId } },
       },
       include: {
-        sender: { select: { id: true, username: true, avatar: true } },
+        // 🟢 FIX : Ajout de nickname: true ici
+        sender: { select: { id: true, username: true, nickname: true, avatar: true } },
       },
     });
   }
 
   // 5. Récupérer l'historique
   async getChannelMessages(channelId: number, userId: number) {
-    // 🔒 Vérifie l'accès avant de lire
     const hasAccess = await this.checkAccess(channelId, userId);
     if (!hasAccess) throw new ForbiddenException("Lecture refusée.");
 
     return this.prisma.message.findMany({
       where: { channelId },
       include: {
-        sender: { select: { id: true, username: true, avatar: true } },
+        // 🟢 FIX : Ajout de nickname: true ici aussi
+        sender: { select: { id: true, username: true, nickname: true, avatar: true } },
       },
       orderBy: { createdAt: 'asc' },
     });

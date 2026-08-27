@@ -6,6 +6,19 @@ import { FriendshipStatus } from '@prisma/client';
 export class PostsService {
   constructor(private prisma: PrismaService) {}
 
+  // 🛠️ MÉTHODE UTILITAIRE : Permet de ne pas répéter les inclusions complexes de Prisma
+  private getPostIncludes(currentUserId: number) {
+    return {
+      author: { select: { id: true, username: true, nickname: true, avatar: true } }, 
+      likes: { where: { userId: currentUserId }, select: { id: true } },
+      comments: {
+        include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } },
+        orderBy: { createdAt: 'asc' } as any, // "as any" permet d'éviter l'erreur TS stricte de Prisma ici
+      },
+      _count: { select: { likes: true, comments: true } },
+    };
+  }
+
   async createPost(userId: number, content: string, isPublic: boolean, imageUrl?: string) {
     return this.prisma.post.create({
       data: {
@@ -14,20 +27,19 @@ export class PostsService {
         imageUrl,
         authorId: userId,
       },
-      // 🟢 FIX : On demande à Prisma de renvoyer les mêmes inclusions que getFeed
-      include: {
-        author: { select: { id: true, username: true, avatar: true } },
-        likes: true, 
-        comments: {
-          include: { user: { select: { id: true, username: true, avatar: true } } }
-        },
-        _count: { select: { likes: true, comments: true } },
-      },
+      include: this.getPostIncludes(userId),
     });
   }
 
-  async getFeed(userId: number) {
-    // 1. Récupérer les amis pour le filtrage
+  async getFeed(userId?: number) {
+    if (!userId) {
+      return this.prisma.post.findMany({
+        where: { isPublic: true },
+        orderBy: { createdAt: 'desc' },
+        include: this.getPostIncludes(-1), // -1 pour qu'un visiteur n'ait jamais de posts "likés"
+      });
+    }
+
     const friendships = await this.prisma.friendship.findMany({
       where: {
         status: FriendshipStatus.ACCEPTED,
@@ -39,7 +51,6 @@ export class PostsService {
       f.requesterId === userId ? f.addresseeId : f.requesterId
     );
 
-    // 2. Récupérer les posts (Publics OU (Privés ET (auteur = moi OU auteur = ami)))
     return this.prisma.post.findMany({
       where: {
         OR: [
@@ -49,15 +60,50 @@ export class PostsService {
         ],
       },
       orderBy: { createdAt: 'desc' },
-      include: {
-        author: { select: { id: true, username: true, avatar: true } },
-        likes: { where: { userId }, select: { id: true } }, // Permet de savoir si l'utilisateur courant a liké
-        comments: {
-          include: { user: { select: { id: true, username: true, avatar: true } } },
-          orderBy: { createdAt: 'asc' },
-        },
-        _count: { select: { likes: true, comments: true } },
+      include: this.getPostIncludes(userId),
+    });
+  }
+
+  // 🟢 NOUVELLE MÉTHODE : Récupérer les posts d'un utilisateur avec règles de confidentialité
+  async getUserPosts(targetUserId: number, requesterId?: number) {
+    // 1. On regarde son propre profil -> On voit tous ses propres posts
+    if (requesterId === targetUserId) {
+      return this.prisma.post.findMany({
+        where: { authorId: targetUserId },
+        orderBy: { createdAt: 'desc' },
+        include: this.getPostIncludes(requesterId),
+      });
+    }
+
+    // 2. Un visiteur non connecté regarde le profil -> Il ne voit que les posts publics
+    if (!requesterId) {
+      return this.prisma.post.findMany({
+        where: { authorId: targetUserId, isPublic: true },
+        orderBy: { createdAt: 'desc' },
+        include: this.getPostIncludes(-1),
+      });
+    }
+
+    // 3. Un utilisateur connecté regarde le profil d'un autre -> On vérifie s'ils sont amis
+    const isFriend = await this.prisma.friendship.findFirst({
+      where: {
+        status: FriendshipStatus.ACCEPTED,
+        OR: [
+          { requesterId: requesterId, addresseeId: targetUserId },
+          { requesterId: targetUserId, addresseeId: requesterId },
+        ],
       },
+    });
+
+    return this.prisma.post.findMany({
+      where: { 
+        authorId: targetUserId,
+        // Si ami, on ne filtre pas sur isPublic (donc il verra aussi les posts privés). 
+        // Sinon, on impose isPublic: true.
+        isPublic: isFriend ? undefined : true 
+      },
+      orderBy: { createdAt: 'desc' },
+      include: this.getPostIncludes(requesterId),
     });
   }
 

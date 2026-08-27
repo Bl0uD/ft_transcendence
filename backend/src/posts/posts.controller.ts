@@ -4,16 +4,34 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { Public } from '../auth/public.decorator';
 
 @UseGuards(JwtAuthGuard) 
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
+  @Public()
   @Get('feed')
   async getFeed(@Req() req: any) {
-    const userId = req.user.id || req.user.userId || req.user.sub;
-    return this.postsService.getFeed(Number(userId));
+    let userId: number | undefined;
+    if (req.user) {
+      userId = Number(req.user.id || req.user.userId || req.user.sub);
+    }
+    
+    return this.postsService.getFeed(userId);
+  }
+
+  // 🟢 NOUVELLE ROUTE : Récupérer les posts d'un utilisateur
+  @Public()
+  @Get('user/:userId')
+  async getUserPosts(@Param('userId', ParseIntPipe) targetUserId: number, @Req() req: any) {
+    let requesterId: number | undefined;
+    if (req.user) {
+      requesterId = Number(req.user.id || req.user.userId || req.user.sub);
+    }
+    
+    return this.postsService.getUserPosts(targetUserId, requesterId);
   }
 
   @Post()
@@ -35,7 +53,6 @@ export class PostsController {
     const userId = req.user.id || req.user.userId || req.user.sub;
     const isPublicBool = isPublic === 'true';
     
-    // 🟢 FIX : Utilisation de 'undefined' au lieu de 'null' pour TypeScript
     const imageUrl = file ? `/uploads/posts/${file.filename}` : undefined; 
     
     return this.postsService.createPost(Number(userId), content, isPublicBool, imageUrl);

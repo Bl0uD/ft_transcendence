@@ -40,6 +40,7 @@ api.interceptors.response.use(
       const message = error.response.data?.message;
 
       // <-- AJOUT SEMAINE 5 : Gestion spécifique de la 2FA
+	  const requestUrl = error.config?.url;
       if (message === "2FA validation required") {
         console.warn('🟡 2FA requise. Bascule vers le formulaire OTP.');
         useAuthStore.getState().setRequires2FA(true);
@@ -50,8 +51,7 @@ api.interceptors.response.use(
         // Sécurité : Nettoyage du localStorage (faute de frappe 'acccess_token' corrigée)
         localStorage.removeItem('access_token');
         
-        // Redirection brutale mais efficace vers la page de login
-        window.location.href = '/login';
+        window.location.href = '/';
       }
     }
     

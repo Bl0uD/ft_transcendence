@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
 import { getSocket, updateSocketToken } from '../services/socket';
 import { useAuthStore } from '../store/authStore';
-import { useSocialStore } from '../store/socialStore'; // <-- AJOUT
+import { useSocialStore } from '../store/socialStore';
 
 interface UseSocketReturn {
-  socket: Socket;
+  socket: Socket | null;
   isConnected: boolean;
   authError: string | null;
 }
@@ -16,13 +16,21 @@ export const useSocket = (): UseSocketReturn => {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const refreshToken = useAuthStore((state) => state.refreshToken);
-  const logout = useAuthStore((state) => state.logout);
-  const updateFriendStatus = useSocialStore((state) => state.updateFriendStatus); // <-- AJOUT
+  const logout = useAuthStore((state: any) => state.logout);
+  const updateFriendStatus = useSocialStore((state) => state.updateFriendStatus);
   const navigate = useNavigate();
   
+  // 🟢 SÉCURITÉ : Récupération du token pour éviter les connexions intempestives des visiteurs
+  const token = localStorage.getItem('access_token');
   const socket = getSocket();
 
   useEffect(() => {
+    // Si l'utilisateur n'est pas authentifié (visiteur), on stope net pour éviter le spam WebSocket
+    if (!token) {
+      setIsConnected(false);
+      return;
+    }
+
     const handleConnect = () => {
       setIsConnected(true);
       setAuthError(null);
@@ -40,11 +48,11 @@ export const useSocket = (): UseSocketReturn => {
             socket.connect(); 
           } else {
             logout();
-            navigate('/login');
+            navigate('/');
           }
         } catch (refreshErr) {
           logout();
-          navigate('/login');
+          navigate('/');
         }
       } else {
         setAuthError("Connexion au serveur de messagerie perdue.");
@@ -58,7 +66,6 @@ export const useSocket = (): UseSocketReturn => {
       }
     };
 
-    // <-- AJOUT SEMAINE 5 : Gestion de la présence
     const handleUserConnected = (data: { userId: number, status: 'ONLINE' }) => {
       updateFriendStatus(data.userId, data.status);
     };
@@ -89,11 +96,10 @@ export const useSocket = (): UseSocketReturn => {
       socket.off('connect_error', handleConnectError);
       socket.off('disconnect', handleDisconnect);
       
-      // Nettoyage de la présence
       socket.off('user_connected', handleUserConnected);
       socket.off('user_disconnected', handleUserDisconnected);
     };
-  }, [socket, refreshToken, logout, navigate, updateFriendStatus]); // <-- MAJ des dépendances
+  }, [socket, token, refreshToken, logout, navigate, updateFriendStatus]);
 
   return { socket, isConnected, authError };
 };

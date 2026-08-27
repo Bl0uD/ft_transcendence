@@ -6,7 +6,7 @@ export function ProtectedRoute() {
 
   // Si l'utilisateur n'est pas connecté, on le redirige gentiment vers le login
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

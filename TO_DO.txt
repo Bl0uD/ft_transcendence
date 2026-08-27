@@ -10,3 +10,5 @@ mettre les posts dans le profil
 faire une notif sure la page /chat, salon en blanc qudn qqln parle
 
 supprimer refresh apres erreur dans /login
+
+mettre la pp le point vert dans le volet social et retirer le bloquer et supprimer l amis sur le profil de l amis en question.
