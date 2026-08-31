@@ -60,7 +60,7 @@ export class FriendsService {
       },
     });
 
-    // 🟢 3. Notification en temps réel
+    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(requesterId);
     this.friendsGateway.notifySocialUpdate(addresseeId);
 
@@ -92,9 +92,12 @@ export class FriendsService {
       data: { status: FriendshipStatus.ACCEPTED },
     });
 
-    // 🟢 3. Notification en temps réel
+    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(updated.requesterId);
     this.friendsGateway.notifySocialUpdate(updated.addresseeId);
+
+    // If accepting a request creates a chat room, you should also emit 'rooms_updated'
+    // via a ChatGateway notification mechanism if necessary.
 
     return updated;
   }
@@ -124,7 +127,7 @@ export class FriendsService {
       where: { id: relation.id },
     });
 
-    // 🟢 3. Notification en temps réel
+    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(deleted.requesterId);
     this.friendsGateway.notifySocialUpdate(deleted.addresseeId);
 
@@ -158,7 +161,7 @@ export class FriendsService {
         },
       });
       
-      // 🟢 3. Notification en temps réel
+      // 🟢 3. Notification en temps réel ciblée
       this.friendsGateway.notifySocialUpdate(blockerId);
       this.friendsGateway.notifySocialUpdate(targetUserId);
       
@@ -173,7 +176,7 @@ export class FriendsService {
       },
     });
 
-    // 🟢 3. Notification en temps réel
+    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(blockerId);
     this.friendsGateway.notifySocialUpdate(targetUserId);
 
@@ -200,7 +203,7 @@ export class FriendsService {
       where: { id: relation.id },
     });
 
-    // 🟢 3. Notification en temps réel
+    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(blockerId);
     this.friendsGateway.notifySocialUpdate(targetUserId);
 

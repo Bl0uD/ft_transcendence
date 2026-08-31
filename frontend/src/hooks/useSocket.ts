@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Socket } from 'socket.io-client';
-import { getSocket, updateSocketToken } from '../services/socket';
+import { io, Socket } from 'socket.io-client'; // 👈 Import de 'io' pour gérer les instances localement
 import { useAuthStore } from '../store/authStore';
 import { useSocialStore } from '../store/socialStore';
 
@@ -11,25 +10,44 @@ interface UseSocketReturn {
   authError: string | null;
 }
 
-export const useSocket = (): UseSocketReturn => {
+// 🟢 SÉCURITÉ : Cache global pour éviter d'ouvrir 50 connexions pour le même namespace
+const socketCache: Record<string, Socket> = {};
+
+export const useSocket = (namespace: string = '/'): UseSocketReturn => {
+  const [socket, setSocket] = useState<Socket | null>(socketCache[namespace] || null);
   const [isConnected, setIsConnected] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const refreshToken = useAuthStore((state) => state.refreshToken);
+  const refreshToken = useAuthStore((state: any) => state.refreshToken);
   const logout = useAuthStore((state: any) => state.logout);
-  const updateFriendStatus = useSocialStore((state) => state.updateFriendStatus);
+  const updateFriendStatus = useSocialStore((state: any) => state.updateFriendStatus);
   const navigate = useNavigate();
   
-  // 🟢 SÉCURITÉ : Récupération du token pour éviter les connexions intempestives des visiteurs
   const token = localStorage.getItem('access_token');
-  const socket = getSocket();
 
   useEffect(() => {
-    // Si l'utilisateur n'est pas authentifié (visiteur), on stope net pour éviter le spam WebSocket
+    // Si l'utilisateur n'est pas authentifié, on coupe et on nettoie ce namespace
     if (!token) {
+      if (socketCache[namespace]) {
+        socketCache[namespace].disconnect();
+        delete socketCache[namespace];
+      }
+      setSocket(null);
       setIsConnected(false);
       return;
     }
+
+    // 1. Initialisation : créer le socket s'il n'existe pas encore pour ce namespace
+    if (!socketCache[namespace]) {
+      socketCache[namespace] = io(namespace, {
+        auth: { token },
+        path: '/socket.io', // ⚠️ Ajuste ici si tu avais une config spéciale pour ton Nginx
+        transports: ['websocket'],
+      });
+    }
+
+    const currentSocket = socketCache[namespace];
+    setSocket(currentSocket);
 
     const handleConnect = () => {
       setIsConnected(true);
@@ -42,10 +60,9 @@ export const useSocket = (): UseSocketReturn => {
       if (err.message.includes('Unauthorized') || err.message.includes('jwt expired')) {
         try {
           const newToken = await refreshToken();
-          
           if (newToken) {
-            updateSocketToken(newToken);
-            socket.connect(); 
+            currentSocket.auth = { token: newToken };
+            currentSocket.connect(); 
           } else {
             logout();
             navigate('/');
@@ -55,51 +72,54 @@ export const useSocket = (): UseSocketReturn => {
           navigate('/');
         }
       } else {
-        setAuthError("Connexion au serveur de messagerie perdue.");
+        setAuthError(`Connexion au serveur ${namespace} perdue.`);
       }
     };
 
     const handleDisconnect = (reason: Socket.DisconnectReason) => {
       setIsConnected(false);
       if (reason === 'io server disconnect') {
-        socket.connect();
+        currentSocket.connect();
       }
     };
 
     const handleUserConnected = (data: { userId: number, status: 'ONLINE' }) => {
-      updateFriendStatus(data.userId, data.status);
+      if (updateFriendStatus) updateFriendStatus(data.userId, data.status);
     };
 
     const handleUserDisconnected = (data: { userId: number, status: 'OFFLINE' }) => {
-      updateFriendStatus(data.userId, data.status);
+      if (updateFriendStatus) updateFriendStatus(data.userId, data.status);
     };
 
-    // 1. Souscription aux événements système
-    socket.on('connect', handleConnect);
-    socket.on('connect_error', handleConnectError);
-    socket.on('disconnect', handleDisconnect);
+    // 2. Souscription aux événements système
+    currentSocket.on('connect', handleConnect);
+    currentSocket.on('connect_error', handleConnectError);
+    currentSocket.on('disconnect', handleDisconnect);
     
-    // Souscription aux événements de présence
-    socket.on('user_connected', handleUserConnected);
-    socket.on('user_disconnected', handleUserDisconnected);
+    // On n'écoute la présence en ligne que sur le socket global ('/')
+    if (namespace === '/') {
+      currentSocket.on('user_connected', handleUserConnected);
+      currentSocket.on('user_disconnected', handleUserDisconnected);
+    }
 
-    // 2. Initialisation : connecter si ce n'est pas déjà fait
-    if (!socket.connected) {
-      socket.connect();
+    if (!currentSocket.connected) {
+      currentSocket.connect();
     } else {
       setIsConnected(true); 
     }
 
-    // 3. Nettoyage strict (Sécurité mémoire)
+    // 3. Nettoyage strict au démontage
     return () => {
-      socket.off('connect', handleConnect);
-      socket.off('connect_error', handleConnectError);
-      socket.off('disconnect', handleDisconnect);
+      currentSocket.off('connect', handleConnect);
+      currentSocket.off('connect_error', handleConnectError);
+      currentSocket.off('disconnect', handleDisconnect);
       
-      socket.off('user_connected', handleUserConnected);
-      socket.off('user_disconnected', handleUserDisconnected);
+      if (namespace === '/') {
+        currentSocket.off('user_connected', handleUserConnected);
+        currentSocket.off('user_disconnected', handleUserDisconnected);
+      }
     };
-  }, [socket, token, refreshToken, logout, navigate, updateFriendStatus]);
+  }, [namespace, token, refreshToken, logout, navigate, updateFriendStatus]);
 
   return { socket, isConnected, authError };
 };

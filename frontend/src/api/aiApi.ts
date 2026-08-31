@@ -67,7 +67,6 @@ export async function streamAIChat(
 
         try {
           const parsed = JSON.parse(cleanLine);
-          // On passe l'objet entier directement à AiChatView
           onChunk(parsed);
         } catch {
           onChunk(cleanLine);

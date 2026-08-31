@@ -100,7 +100,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    // 🟢 Le DTO doit utiliser channelId
     @MessageBody() payload: { channelId: number; content: string }, 
   ) {
     const userId = client.data.user?.sub;
@@ -117,6 +116,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const roomTarget = String(channelId);
       this.server.to(roomTarget).emit('receive_message', savedMessage);
+      
+      // 🟢 AJOUT ICI : Dit au frontend de rafraîchir la liste des salons 
+      // pour tous les membres de cette conversation
+      this.server.to(roomTarget).emit('rooms_updated'); 
+
     } catch (error) {
       console.warn(`[ChatGateway] Erreur envoi message: ${error.message}`);
       client.emit('error', error.message || "Impossible d'envoyer le message.");

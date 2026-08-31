@@ -1,29 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useSocialStore } from '../store/socialStore'; // 👈 On importe le nouveau store
 import { useSocket } from '../hooks/useSocket';
 import api from '../api/axios';
 import TwoFactorVerify from '../components/TwoFactorVerify';
 import UserAvatar from '../components/UserAvatar';
 
-// --- INTERFACES GLOBALES ---
-interface User { id: number; username: string; nickname?: string | null; avatar?: string | null; }
-interface FriendRequest { id: number; status: string; createdAt: string; requester: User; }
-interface Comment { id: number; content: string; createdAt: string; user: User; }
+// --- INTERFACES LOCALES (Le reste est dans les stores) ---
+interface Comment { id: number; content: string; createdAt: string; user: any; }
 interface Post {
   id: number; content: string; imageUrl: string | null; isPublic: boolean; createdAt: string;
-  author: User; likes: { id: number }[]; comments: Comment[];
+  author: any; likes: { id: number }[]; comments: Comment[];
   _count: { likes: number; comments: number; };
 }
-
-// --- INTERFACES CHAT ---
-interface Message {
-  id?: number | string; senderId?: number; senderName?: string; content: string;
-  timestamp?: string; createdAt?: string; created_at?: string;
-  sender?: { id: number; username: string; nickname?: string | null; avatar?: string; };
-}
-interface RoomMember { userId: number; user: User; }
-interface Room { id: number; name: string | null; type?: string; members?: RoomMember[]; }
 
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
   if (!account || !account.username) return 'Visiteur';
@@ -34,14 +24,21 @@ export default function HomeFeed() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  // --- STORE & SOCKET ---
+  // --- STORES & SOCKET ---
   const user = useAuthStore((state: any) => state.user);
   const logout = useAuthStore((state: any) => state.logout);
   const loginGlobal = useAuthStore((state: any) => state.login);
   const requires2FA = useAuthStore((state: any) => state.requires2FA);
-  const { socket, isConnected } = useSocket();
+  
+  const { socket } = useSocket('/'); // 👈 Écoute le canal racine pour les notifs
+  
+  // 🟢 On récupère toute la donnée et les actions depuis le Social Store
+  const { 
+    friends, pendingRequests, blockedUsers, friendsStatus,
+    fetchAllSocialData, sendRequest, acceptRequest, removeFriend, blockUser, unblockUser
+  } = useSocialStore();
 
-  // --- ÉTATS MODALES AUTH ---
+  // --- ÉTATS MODALES & FORMULAIRES ---
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [identifier, setIdentifier] = useState('');
@@ -55,14 +52,9 @@ export default function HomeFeed() {
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegLoading, setIsRegLoading] = useState(false);
 
-  // --- ÉTATS SOCIAUX & FEED ---
+  // --- ÉTATS UI SOCIAUX & FEED ---
   const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'blocked'>('friends');
-  const [friends, setFriends] = useState<User[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [blockedUsers, setBlockedUsers] = useState<User[]>([]);
   const [targetUsername, setTargetUsername] = useState('');
-  const [socialError, setSocialError] = useState<string | null>(null);
-
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
@@ -74,14 +66,6 @@ export default function HomeFeed() {
   const [openComments, setOpenComments] = useState<Record<number, boolean>>({});
 
   const userIdRef = useRef<number | null>(null);
-
-  // --- ÉTATS CHAT INTEGRE ---
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [activeRoom, setActiveRoom] = useState<number | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // --- INIT & URL PARAMS ---
   useEffect(() => {
@@ -96,122 +80,47 @@ export default function HomeFeed() {
         })
         .catch(() => { setShowLoginModal(true); setLoginError("Impossible de récupérer le profil 42."); });
     }
+  }, [searchParams, navigate, loginGlobal]);
 
-    const roomId = searchParams.get('roomId');
-    if (roomId && user) {
-      setIsChatOpen(true);
-      setActiveRoom(Number(roomId));
-      navigate('/', { replace: true });
-    }
-  }, [searchParams, navigate, loginGlobal, user]);
-
-  // --- CHARGEMENT FEED & SOCIAL ---
-  const loadData = async () => {
+  // --- CHARGEMENT FEED ---
+  const loadFeed = async () => {
     try {
-      setSocialError(null);
       const feedRes = await api.get<Post[]>('/posts/feed');
       setPosts(feedRes.data);
-
-      if (user) {
-        if (!userIdRef.current) userIdRef.current = user.id;
-        const [friendsRes, pendingRes, blockedRes] = await Promise.all([
-          api.get<User[]>('/friends'),
-          api.get<FriendRequest[]>('/friends/requests/pending'),
-          api.get<User[]>('/friends/blocked'),
-        ]);
-        setFriends(friendsRes.data);
-        setPendingRequests(pendingRes.data);
-        setBlockedUsers(blockedRes.data);
-      }
-    } catch (err) { console.error('Erreur chargement', err); }
+    } catch (err) { console.error('Erreur chargement feed', err); }
   };
 
   useEffect(() => {
-    loadData();
-    if (socket) {
-      socket.on('socialUpdate', (data: { userId: number }) => { if (data.userId === userIdRef.current) loadData(); });
-      return () => { socket.off('socialUpdate'); };
+    if (user) {
+      if (!userIdRef.current) userIdRef.current = user.id;
+      loadFeed();
+      fetchAllSocialData(); // 👈 On charge le social depuis le store
     }
-  }, [user, socket]);
+  }, [user, fetchAllSocialData]);
 
-  // --- LOGIQUE CHAT ---
-  const fetchRooms = async () => {
-    try {
-      const response = await api.get<Room[]>('/chat/channels');
-      setRooms(response.data);
-    } catch (err) { console.error("Erreur salons:", err); }
-  };
-
+  // --- ÉCOUTE DES WEBSOCKETS SOCIAUX ---
   useEffect(() => {
-    if (!user) return;
-    fetchRooms();
-  }, [user]);
+    if (socket && user) {
+      const handleSocialUpdate = (data: any) => {
+        // Rafraîchir les données sociales globales si on est concerné
+        if (!data || data.userId === userIdRef.current || data.targetId === userIdRef.current) {
+          fetchAllSocialData();
+        }
+      };
 
-  useEffect(() => {
-    if (!isConnected || !socket || !user || activeRoom === null) {
-      if (activeRoom === null) setMessages([]);
-      return;
+      socket.on('socialUpdate', handleSocialUpdate);
+      socket.on('friend_request_received', fetchAllSocialData);
+      socket.on('friend_request_accepted', fetchAllSocialData);
+
+      return () => {
+        socket.off('socialUpdate', handleSocialUpdate);
+        socket.off('friend_request_received', fetchAllSocialData);
+        socket.off('friend_request_accepted', fetchAllSocialData);
+      };
     }
+  }, [socket, user, fetchAllSocialData]);
 
-    const handleHistory = (hist: Message[]) => { 
-      if (Array.isArray(hist)) setMessages(hist); 
-    };
-    
-    const handleReceiveMessage = (msg: Message) => {
-      setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
-    };
-
-    socket.on('load_history', handleHistory);
-    socket.on('receive_message', handleReceiveMessage);
-    socket.on('rooms_updated', fetchRooms);
-
-    socket.emit('joinChannel', { channelId: activeRoom });
-
-    return () => {
-      socket.off('load_history', handleHistory);
-      socket.off('receive_message', handleReceiveMessage);
-      socket.off('rooms_updated', fetchRooms);
-    };
-  }, [socket, activeRoom, isConnected, user]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isChatOpen]);
-
-  const handleSendChatMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    const content = chatInput.trim();
-    if (!content || !isConnected || !socket || activeRoom === null) return;
-
-    socket.emit('send_message', {
-      channelId: activeRoom,
-      content: content,
-    });
-
-    setChatInput('');
-  };
-
-  const getRoomDisplayInfo = (room?: Room) => {
-    if (!room) return { name: 'Chargement...', icon: '⏳', targetUser: null };
-    
-    if (room.type === 'DIRECT' || room.name?.startsWith('dm_')) {
-      const otherMember = room.members?.find(m => m.userId !== user?.id);
-      if (otherMember?.user) {
-        return {
-          name: getDisplayName(otherMember.user),
-          icon: '💬',
-          targetUser: otherMember.user
-        };
-      }
-      return { name: 'Message Privé', icon: '💬', targetUser: null };
-    }
-    
-    if (room.name?.startsWith('ai-chat-')) return { name: 'Assistant IA', icon: '🤖', targetUser: null };
-    
-    return { name: room.name ? `# ${room.name}` : 'Salon inconnu', icon: '👥', targetUser: null };
-  };
-
-  // --- ACTIONS AUTH & FEED ---
+  // --- ACTIONS AUTH ---
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setIsLoginLoading(true);
     try {
@@ -234,6 +143,7 @@ export default function HomeFeed() {
     } catch (err: any) { setRegError(err.response?.data?.message || 'Erreur'); } finally { setIsRegLoading(false); }
   };
 
+  // --- ACTIONS FEED ---
   const submitPost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostContent.trim() && !newPostImage) return;
@@ -268,12 +178,20 @@ export default function HomeFeed() {
     } catch (err) {}
   };
 
-  const handleSocialAction = async (action: () => Promise<any>) => { try { await action(); loadData(); } catch (err) {} };
+  // --- ACTIONS SOCIALES WRAPPERS ---
+  const handleAddFriend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!targetUsername.trim()) return;
+    try {
+      await sendRequest(targetUsername.trim());
+      setTargetUsername('');
+    } catch(e) {}
+  };
 
   return (
     <div className="flex h-screen bg-slate-900 text-white overflow-hidden relative">
       
-      {/* ================= MODALES AUTHENTIFICATION ================= */}
+      {/* MODALES AUTHENTIFICATION */}
       {showLoginModal && (
          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="relative w-full max-w-md space-y-6 bg-slate-900/90 p-8 rounded-3xl border border-slate-700 shadow-2xl">
@@ -316,46 +234,87 @@ export default function HomeFeed() {
         </div>
       )}
 
-      {/* --- NAVBAR --- */}
+      {/* NAVBAR */}
       <nav className="fixed top-0 left-0 w-full h-16 bg-slate-800 border-b border-slate-700 z-50 flex items-center justify-between px-6 shadow-md">
         <div onClick={() => user && navigate(`/${user.username}`)} className="flex items-center gap-3 cursor-pointer hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-colors">
           <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-10 h-10 border border-slate-600" />
           <span className="font-semibold text-lg">{getDisplayName(user)}</span>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => user ? setIsChatOpen(!isChatOpen) : setShowLoginModal(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded text-sm font-medium transition-colors">💬 Chat</button>
           {user ? (
-            <button onClick={() => { logout(); setShowLoginModal(false); setIsChatOpen(false); }} className="px-4 py-2 bg-red-600/90 hover:bg-red-500 rounded text-sm font-medium">Se déconnecter</button>
+            <button onClick={() => { logout(); setShowLoginModal(false); }} className="px-4 py-2 bg-red-600/90 hover:bg-red-500 rounded text-sm font-medium">Se déconnecter</button>
           ) : (
             <button onClick={() => setShowLoginModal(true)} className="px-4 py-2 bg-blue-600/90 hover:bg-blue-500 rounded text-sm font-medium">Se connecter</button>
           )}
         </div>
       </nav>
 
-      {/* --- CONTENU --- */}
+      {/* CONTENU */}
       <div className="flex w-full pt-16 h-full">
 
-        {/* PANNEAU SOCIAL (À GAUCHE) */}
+        {/* PANNEAU SOCIAL */}
         {user ? (
           <aside className="hidden lg:flex w-80 bg-slate-800 border-r border-slate-700 flex-col h-full z-10">
-            <div className="p-5 border-b border-slate-700 sticky top-0"><h2 className="text-lg font-bold mb-4">👥 Social</h2><form onSubmit={(e) => {e.preventDefault(); handleSocialAction(()=>api.post('/friends/request', { username: targetUsername.trim() })).then(()=>setTargetUsername(''))}} className="flex gap-2"><input type="text" placeholder="Ajouter un ami (username)..." value={targetUsername} onChange={(e) => setTargetUsername(e.target.value)} className="p-2 border border-slate-600 rounded bg-slate-900 flex-1 text-sm focus:outline-none" /><button type="submit" className="bg-blue-600 px-3 text-sm rounded">Ajouter</button></form></div>
-            <div className="flex border-b border-slate-700 text-sm"><button onClick={() => setActiveTab('friends')} className={`flex-1 py-3 ${activeTab === 'friends' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'}`}>Amis</button><button onClick={() => setActiveTab('pending')} className={`flex-1 py-3 ${activeTab === 'pending' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'}`}>Demandes</button><button onClick={() => setActiveTab('blocked')} className={`flex-1 py-3 ${activeTab === 'blocked' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'}`}>Bloqués</button></div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {activeTab === 'friends' && friends.map(f => (<div key={f.id} className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg border border-slate-700"><span className="cursor-pointer hover:underline" onClick={() => navigate(`/${f.username}`)}>{getDisplayName(f)}</span><div className="flex gap-2"><button onClick={() => handleSocialAction(()=>api.post('/friends/block', { targetUserId: f.id }))} className="text-xs text-yellow-500">Bloquer</button><button onClick={() => handleSocialAction(()=>api.delete(`/friends/${f.id}`))} className="text-xs text-red-400">Retirer</button></div></div>))}
-              {activeTab === 'pending' && pendingRequests.map(r => (<div key={r.id} className="p-3 bg-slate-900/50 rounded-lg border border-slate-700 text-sm"><span className="font-semibold cursor-pointer" onClick={() => navigate(`/${r.requester.username}`)}>{getDisplayName(r.requester)}</span> vous a ajouté.<button onClick={() => handleSocialAction(()=>api.put('/friends/accept', { requestId: r.id }))} className="w-full mt-2 py-1 bg-green-600 rounded">Accepter</button></div>))}
-              {activeTab === 'blocked' && blockedUsers.map(u => (<div key={u.id} className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg border border-slate-700"><span className="line-through text-slate-500">{getDisplayName(u)}</span><button onClick={() => handleSocialAction(()=>api.delete(`/friends/block/${u.id}`)) } className="text-xs text-slate-300">Débloquer</button></div>))}
+            <div className="p-5 border-b border-slate-700 sticky top-0">
+              <h2 className="text-lg font-bold mb-4">👥 Social</h2>
+              <form onSubmit={handleAddFriend} className="flex gap-2">
+                <input type="text" placeholder="Ajouter un ami (username)..." value={targetUsername} onChange={(e) => setTargetUsername(e.target.value)} className="p-2 border border-slate-600 rounded bg-slate-900 flex-1 text-sm focus:outline-none" />
+                <button type="submit" className="bg-blue-600 px-3 text-sm rounded hover:bg-blue-500">Ajouter</button>
+              </form>
+            </div>
+            
+            <div className="flex border-b border-slate-700 text-sm">
+              <button onClick={() => setActiveTab('friends')} className={`flex-1 py-3 ${activeTab === 'friends' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'}`}>Amis</button>
+              <button onClick={() => setActiveTab('pending')} className={`flex-1 py-3 ${activeTab === 'pending' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'}`}>Demandes <span className={pendingRequests.length > 0 ? "text-red-400 font-bold" : ""}>{pendingRequests.length > 0 && `(${pendingRequests.length})`}</span></button>
+              <button onClick={() => setActiveTab('blocked')} className={`flex-1 py-3 ${activeTab === 'blocked' ? 'text-blue-400 border-b-2 border-blue-500' : 'text-slate-400'}`}>Bloqués</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+              {activeTab === 'friends' && friends.map(f => (
+                <div key={f.id} className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                  <div className="flex items-center gap-2">
+                    {/* Indicateur de présence via friendsStatus */}
+                    <div className={`w-2 h-2 rounded-full ${friendsStatus[f.id] === 'ONLINE' ? 'bg-green-500' : 'bg-slate-500'}`} />
+                    <span className="cursor-pointer hover:underline font-medium" onClick={() => navigate(`/${f.username}`)}>{getDisplayName(f)}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => blockUser(f.id)} className="text-xs text-yellow-500 hover:text-yellow-400">Bloquer</button>
+                    <button onClick={() => removeFriend(f.id)} className="text-xs text-red-400 hover:text-red-300">Retirer</button>
+                  </div>
+                </div>
+              ))}
+              
+              {activeTab === 'pending' && pendingRequests.map(r => (
+                <div key={r.id} className="p-3 bg-slate-900/50 rounded-lg border border-slate-700 text-sm">
+                  <span className="font-semibold cursor-pointer text-indigo-300" onClick={() => navigate(`/${r.requester.username}`)}>{getDisplayName(r.requester)}</span> vous a ajouté.
+                  <button onClick={() => acceptRequest(r.id)} className="w-full mt-3 py-1.5 bg-emerald-600/90 hover:bg-emerald-500 rounded font-medium transition-colors">Accepter</button>
+                </div>
+              ))}
+              
+              {activeTab === 'blocked' && blockedUsers.map(u => (
+                <div key={u.id} className="flex justify-between items-center p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                  <span className="line-through text-slate-500">{getDisplayName(u)}</span>
+                  <button onClick={() => unblockUser(u.id)} className="text-xs text-slate-300 hover:text-white bg-slate-800 px-2 py-1 rounded">Débloquer</button>
+                </div>
+              ))}
             </div>
           </aside>
         ) : (
-          <aside className="hidden lg:flex w-80 bg-slate-800/50 border-r border-slate-700 flex-col h-full items-center justify-center p-6 text-center"><span className="text-5xl mb-4">👋</span><h3 className="font-bold mb-2">Rejoignez le réseau</h3><p className="text-slate-400 text-sm mb-4">Connectez-vous pour interagir.</p><button onClick={() => setShowLoginModal(true)} className="w-full py-2 bg-blue-600 rounded-lg mb-2">Se connecter</button><button onClick={() => setShowRegisterModal(true)} className="w-full py-2 bg-slate-700 rounded-lg">Créer un compte</button></aside>
+          <aside className="hidden lg:flex w-80 bg-slate-800/50 border-r border-slate-700 flex-col h-full items-center justify-center p-6 text-center">
+            <span className="text-5xl mb-4">👋</span>
+            <h3 className="font-bold mb-2">Rejoignez le réseau</h3>
+            <p className="text-slate-400 text-sm mb-4">Connectez-vous pour interagir.</p>
+            <button onClick={() => setShowLoginModal(true)} className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg mb-2">Se connecter</button>
+            <button onClick={() => setShowRegisterModal(true)} className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">Créer un compte</button>
+          </aside>
         )}
 
-        {/* CONTENU FEED */}
-        <main className="flex-1 overflow-y-auto p-6 scroll-smooth">
+        {/* FEED */}
+        <main className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar">
           <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-20">
             <h1 className="text-2xl font-bold text-slate-100">Fil d'actualité</h1>
 
-            {/* CRÉATION POST */}
+            {/* Créer un Post */}
             {user && (
               <div className="w-full bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm">
                 <form onSubmit={submitPost} className="flex flex-col gap-4">
@@ -364,23 +323,27 @@ export default function HomeFeed() {
                     <textarea placeholder={`Quoi de neuf, ${getDisplayName(user)} ?`} value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} className="flex-1 bg-slate-900/50 rounded-lg py-3 px-4 border border-slate-700 focus:border-indigo-500 focus:outline-none resize-none min-h-[80px]" />
                   </div>
                   {newPostPreview && (
-                    <div className="relative ml-14"><img src={newPostPreview} alt="Preview" className="rounded-lg max-h-60 object-contain bg-slate-900 border border-slate-700" /><button type="button" onClick={() => { setNewPostImage(null); setNewPostPreview(null); }} className="absolute top-2 right-2 bg-slate-800/80 p-1.5 rounded-full hover:bg-red-500">✕</button></div>
+                    <div className="relative ml-14">
+                      <img src={newPostPreview} alt="Preview" className="rounded-lg max-h-60 object-contain bg-slate-900 border border-slate-700" />
+                      <button type="button" onClick={() => { setNewPostImage(null); setNewPostPreview(null); }} className="absolute top-2 right-2 bg-slate-800/80 p-1.5 rounded-full hover:bg-red-500">✕</button>
+                    </div>
                   )}
                   <div className="flex justify-between items-center ml-14">
                     <div className="flex gap-4 items-center">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="text-indigo-400 text-sm">📸 Image</button>
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="text-indigo-400 text-sm font-medium">📸 Image</button>
                       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {const f = e.target.files?.[0]; if(f){setNewPostImage(f); setNewPostPreview(URL.createObjectURL(f));}}} />
-                      <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-slate-900 border border-slate-700 text-xs rounded p-1.5">
-                        <option value="public">🌐 Public</option><option value="friends">👥 Amis uniquement</option>
+                      <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-slate-900 border border-slate-700 text-xs rounded p-1.5 text-slate-200 outline-none">
+                        <option value="public">🌐 Public</option>
+                        <option value="friends">👥 Amis uniquement</option>
                       </select>
                     </div>
-                    <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="bg-indigo-600 px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50">Publier</button>
+                    <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">Publier</button>
                   </div>
                 </form>
               </div>
             )}
 
-            {/* LISTE POSTS */}
+            {/* Liste des Posts */}
             {posts.map((post) => (
               <div key={post.id} className="w-full bg-slate-800 rounded-xl border border-slate-700 shadow-sm flex flex-col">
                 <div className="p-4 flex items-center gap-3">
@@ -394,20 +357,24 @@ export default function HomeFeed() {
                   </div>
                 </div>
                 {post.content && <div className="px-4 pb-3 whitespace-pre-wrap">{post.content}</div>}
-                {post.imageUrl && <div className="w-full bg-slate-900 border-y border-slate-700 flex justify-center max-h-[500px]"><img src={`/api${post.imageUrl}`} alt="Content" className="object-contain w-full h-full" /></div>}
+                {post.imageUrl && (
+                  <div className="w-full bg-slate-900 border-y border-slate-700 flex justify-center max-h-[500px]">
+                    <img src={`/api${post.imageUrl}`} alt="Content" className="object-contain w-full h-full" />
+                  </div>
+                )}
                 
                 <div className="px-4 py-3 flex gap-6 border-t border-slate-700/50">
-                  <button onClick={() => user ? toggleLike(post.id) : setShowLoginModal(true)} className={`flex items-center gap-2 text-sm font-medium ${post.likes.length > 0 ? 'text-pink-500' : 'text-slate-400 hover:text-slate-200'}`}>
+                  <button onClick={() => user ? toggleLike(post.id) : setShowLoginModal(true)} className={`flex items-center gap-2 text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-slate-400 hover:text-slate-200'}`}>
                     {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
                   </button>
-                  <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200">
+                  <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
                     💬 {post._count.comments} Commentaires
                   </button>
                 </div>
 
                 {openComments[post.id] && (
                   <div className="bg-slate-900/50 p-4 border-t border-slate-700">
-                    <div className="space-y-3 mb-4 max-h-60 overflow-y-auto pr-2">
+                    <div className="space-y-3 mb-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                       {post.comments.map(c => (
                         <div key={c.id} className="flex gap-3 text-sm">
                           <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 text-xs border border-slate-700" onClick={() => navigate(`/${c.user.username}`)} />
@@ -433,136 +400,6 @@ export default function HomeFeed() {
           </div>
         </main>
       </div>
-
-      {/* ================= BULLE DE CHAT FLOTTANTE ================= */}
-      {user && (
-        <div className="fixed bottom-6 right-6 z-[90] flex flex-col items-end">
-          {isChatOpen && (
-            <div className="w-[350px] sm:w-[400px] h-[500px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl mb-4 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
-              
-              {/* Header Chat */}
-              <div className="bg-slate-800 p-3 border-b border-slate-700 flex justify-between items-center shadow-sm z-10">
-                <div className="flex items-center gap-2">
-                  {activeRoom && (
-                    <button onClick={() => setActiveRoom(null)} className="text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-700/50">←</button>
-                  )}
-                  {activeRoom ? (() => {
-                    const roomInfo = getRoomDisplayInfo(rooms.find(r => r.id === activeRoom));
-                    return (
-                      <div className="flex items-center gap-2">
-                        {roomInfo.targetUser ? (
-                          <UserAvatar 
-                            avatarUrl={roomInfo.targetUser.avatar} 
-                            username={roomInfo.name} 
-                            className="w-7 h-7 border border-slate-600 cursor-pointer" 
-                            onClick={() => navigate(`/${roomInfo.targetUser.username}`)}
-                          />
-                        ) : (
-                          <span className="text-lg">{roomInfo.icon}</span>
-                        )}
-                        <span 
-                          className={`font-semibold text-sm ${roomInfo.targetUser ? 'cursor-pointer hover:underline' : ''}`}
-                          onClick={() => roomInfo.targetUser && navigate(`/${roomInfo.targetUser.username}`)}
-                        >
-                          {roomInfo.name}
-                        </span>
-                      </div>
-                    );
-                  })() : (
-                    <span className="font-semibold text-sm">Discussions</span>
-                  )}
-                </div>
-                <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-white px-2">✕</button>
-              </div>
-
-              {/* Contenu Chat */}
-              <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-950">
-                {!isConnected ? (
-                  <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Connexion au serveur...</div>
-                ) : activeRoom === null ? (
-                  <ul className="flex-1 overflow-y-auto">
-                    {rooms.length === 0 ? (
-                      <div className="p-4 text-center text-slate-500 text-sm mt-10">Aucune discussion</div>
-                    ) : (
-                      rooms.map(room => {
-                        const { name, icon, targetUser } = getRoomDisplayInfo(room);
-                        return (
-                          <li key={room.id} onClick={() => setActiveRoom(room.id)} className="p-4 border-b border-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center gap-3 transition-colors">
-                            {targetUser ? (
-                              <UserAvatar avatarUrl={targetUser.avatar} username={name} className="w-10 h-10 border border-slate-700" />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-indigo-900/50 flex items-center justify-center text-indigo-400 text-xl border border-indigo-500/20">
-                                {icon}
-                              </div>
-                            )}
-                            <span className="font-medium text-sm text-slate-200">{name}</span>
-                          </li>
-                        );
-                      })
-                    )}
-                  </ul>
-                ) : (
-                  <>
-                    <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3">
-                      {messages.map((msg, index) => {
-                        const isMe = msg.senderId === user.id || msg.sender?.id === user.id;
-                        const senderName = msg.sender ? getDisplayName(msg.sender) : (msg.senderName || 'Utilisateur');
-                        
-                        return (
-                          <div key={msg.id || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`flex gap-2 max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                              
-                              {!isMe && (
-                                <div className="flex-shrink-0 flex flex-col justify-end pb-1">
-                                  <UserAvatar 
-                                    avatarUrl={msg.sender?.avatar} 
-                                    username={senderName} 
-                                    className="w-7 h-7 text-xs border border-slate-700 shadow-sm cursor-pointer hover:ring-2 hover:ring-indigo-400" 
-                                    onClick={() => msg.sender?.username && navigate(`/${msg.sender.username}`)}
-                                  />
-                                </div>
-                              )}
-
-                              <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                {!isMe && (
-                                  <span 
-                                    className="text-[10px] font-medium text-slate-500 mb-1 ml-1 cursor-pointer hover:underline" 
-                                    onClick={() => msg.sender?.username && navigate(`/${msg.sender.username}`)}
-                                  >
-                                    {senderName}
-                                  </span>
-                                )}
-                                
-                                <div className={`p-2.5 rounded-2xl text-sm ${isMe ? 'bg-indigo-600 text-white rounded-br-sm shadow-md' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm shadow-sm'}`}>
-                                  {msg.content}
-                                </div>
-                              </div>
-
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div ref={messagesEndRef} />
-                    </div>
-                    
-                    <form onSubmit={handleSendChatMessage} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2">
-                      <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Écrire un message..." className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-indigo-500" />
-                      <button type="submit" disabled={!chatInput.trim()} className="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 hover:bg-indigo-500">➤</button>
-                    </form>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          <button 
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            className={`w-14 h-14 rounded-full shadow-lg shadow-indigo-900/50 flex items-center justify-center text-2xl transition-transform hover:scale-105 ${isChatOpen ? 'bg-slate-700 text-white' : 'bg-indigo-600 text-white'}`}
-          >
-            {isChatOpen ? '✕' : '💬'}
-          </button>
-        </div>
-      )}
       
     </div>
   );
