@@ -11,8 +11,6 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatService } from './chat.service';
-// ⚠️ Assure-toi que SendMessageDto attend un `channelId: number` (et non plus un roomId string)
-import { SendMessageDto } from './dto/send-message.dto';
 
 @WebSocketGateway({
   namespace: 'chat',
@@ -22,7 +20,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  private activeConnections = new Map<number, string>();
+  // 🗑️ Adieu la Map 'activeConnections', on utilise la puissance de Socket.io à la place !
 
   constructor(
     private jwtService: JwtService,
@@ -47,7 +45,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (!user) throw new Error('Utilisateur inexistant');
 
       client.data.user = { ...payload, sub: userId, id: userId };
-      this.activeConnections.set(userId, client.id);
+      
+      // 🟢 LA SOLUTION EST LÀ : Dès qu'il se connecte, on le place dans une "room" à son nom
+      client.join(`user_${userId}`);
 
       console.log(`[ChatGateway] Connexion réussie. User ID: ${userId}`);
       this.server.emit('user_connected', { userId, status: 'ONLINE' });
@@ -61,7 +61,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket) {
     const userId = client.data.user?.sub;
     if (userId) {
-      this.activeConnections.delete(userId);
       console.log(`[ChatGateway] Déconnexion. User ID ${userId} retiré.`);
       this.server.emit('user_disconnected', { userId, status: 'OFFLINE' });
     }
@@ -69,7 +68,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('joinChannel')
   async handleJoinChannel(
-    // 🟢 On s'attend explicitement à recevoir un ID numérique depuis React
     @MessageBody() data: { channelId: number },
     @ConnectedSocket() client: Socket,
   ) {
@@ -79,14 +77,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId || isNaN(channelId)) return;
       
     try {
-      // 1. On rejoint (le service vérifie la userLimit de 2 places pour les DMs !)
       const channel = await this.chatService.joinChannel(channelId, userId);
-
-      // 2. On rejoint la room côté Socket.io (converti en string pour Socket.io)
       const roomStr = String(channel.id);
       client.join(roomStr);
       
-      // 3. Envoi de l'historique
       const history = await this.chatService.getChannelMessages(channel.id, userId);
       client.emit('load_history', history);
       
@@ -94,6 +88,29 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       console.warn(`[ChatGateway] Blocage joinChannel: ${error.message}`);
       client.emit('error', error.message || "Accès refusé");
+    }
+  }
+
+  public async notifyNewMessage(channelId: number, authorId: number, savedMessage: any) {
+    const roomTarget = String(channelId);
+    
+    // 1. Envoi au salon (ceux qui ont la fenêtre ouverte)
+    this.server.to(roomTarget).emit('receive_message', savedMessage);
+    this.server.to(roomTarget).emit('rooms_updated'); 
+
+    // 2. Notification ciblée absolue
+    const channel = await this.prisma.channel.findUnique({
+      where: { id: channelId },
+      include: { members: true }, 
+    });
+
+    if (channel && channel.members) {
+      for (const member of channel.members) {
+        // 🟢 On ping la room personnelle du membre (ex: "user_45")
+        // L'IA ping TOUT le monde, toi compris ! (React se charge d'ignorer les doublons visuels)
+        this.server.to(`user_${member.userId}`).emit('receive_message', savedMessage);
+        this.server.to(`user_${member.userId}`).emit('rooms_updated');
+      }
     }
   }
 
@@ -108,39 +125,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId || isNaN(channelId)) return;
 
     try {
-      // 1. Sauvegarde du message en base de données
       const savedMessage = await this.chatService.saveMessage({
         content: payload.content,
         channelId: channelId,
         authorId: userId,
       });
 
-      // 2. Envoi classique à tous ceux qui ont "ouvert" le salon
-      const roomTarget = String(channelId);
-      this.server.to(roomTarget).emit('receive_message', savedMessage);
-      this.server.to(roomTarget).emit('rooms_updated'); 
-
-      // 3. 🟢 LA SOLUTION : On notifie individuellement TOUS les membres du salon
-      // Cela permet de "réveiller" l'interface de jdupuis même s'il n'a pas ouvert le chat
-      const channel = await this.prisma.channel.findUnique({
-        where: { id: channelId },
-        include: { members: true }, // ⚠️ Adapte 'members' selon le nom exact de ta relation Prisma
-      });
-
-      if (channel && channel.members) {
-        for (const member of channel.members) {
-          // On ne se notifie pas soi-même
-          if (member.userId !== userId) {
-            const targetSocketId = this.activeConnections.get(member.userId);
-            
-            if (targetSocketId) {
-              // Ping direct au socket personnel du destinataire !
-              this.server.to(targetSocketId).emit('receive_message', savedMessage);
-              this.server.to(targetSocketId).emit('rooms_updated');
-            }
-          }
-        }
-      }
+      await this.notifyNewMessage(channelId, userId, savedMessage);
 
     } catch (error) {
       console.warn(`[ChatGateway] Erreur envoi message: ${error.message}`);

@@ -11,3 +11,5 @@ faire la page error 404
 personaliser le globalchatwidget.tsx (mettre l heure a cote des messages / afficher dernier message dans la liste des convs en petit)
 
 customiser l assistant ia pour mettre un + avec des suggestion naviguer vers un profil ajouter en amis lister ses amis etc (ptit prompt pre fait).
+
+websocket message recu pour la premiere fois a verifier

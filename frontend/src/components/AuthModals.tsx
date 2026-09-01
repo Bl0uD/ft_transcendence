@@ -59,17 +59,43 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
   };
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsRegLoading(true);
+    e.preventDefault(); 
+    setIsRegLoading(true);
+    setRegError('');
+    
     try {
-      const response = await api.post('/auth/register', { email: regEmail, username: regUsername, password: regPassword });
-      setRegSuccess(response.data.message || 'Succès !');
-      setTimeout(() => {
-        setIsLoginView(true);
-        setIdentifier(regUsername);
-        setRegEmail(''); setRegUsername(''); setRegPassword(''); setRegSuccess('');
-      }, 2000);
+      // 1. Création du compte
+      await api.post('/auth/register', { 
+        email: regEmail, 
+        username: regUsername, 
+        password: regPassword 
+      });
+      
+      setRegSuccess('Succès ! Connexion en cours...');
+
+      // 2. Connexion automatique immédiate
+      const loginResponse = await api.post('/auth/login', { 
+        identifier: regUsername, 
+        password: regPassword 
+      });
+
+      // 3. Sauvegarde du token et mise à jour de l'état global
+      localStorage.setItem('access_token', loginResponse.data.access_token);
+      loginGlobal(loginResponse.data.user, loginResponse.data.access_token);
+      
+      // 4. Nettoyage des champs
+      setRegEmail(''); 
+      setRegUsername(''); 
+      setRegPassword(''); 
+      setRegSuccess('');
+
+      // 5. Fermeture de la modale (sauf si la 2FA est requise)
+      if (!loginResponse.data.user.isTwoFactorEnabled) {
+        onClose();
+      }
+
     } catch (err: any) { 
-      setRegError(err.response?.data?.message || 'Erreur'); 
+      setRegError(err.response?.data?.message || 'Erreur lors de l\'inscription ou de la connexion'); 
     } finally { 
       setIsRegLoading(false); 
     }

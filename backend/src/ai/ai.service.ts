@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, InternalServerErrorException, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, InternalServerErrorException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { Response } from 'express';
 import { firstValueFrom } from 'rxjs';
@@ -6,6 +6,7 @@ import { ChatMessageDto } from './dto/chat-prompt.dto';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FriendsService } from '../friends/friends.service';
+import { ChatGateway } from '../chat/chat.gateway'; // 🟢 Import du Gateway
 
 @Injectable()
 export class AiService implements OnModuleInit {
@@ -23,7 +24,7 @@ export class AiService implements OnModuleInit {
     5. SI l'utilisateur demande de supprimer un ami => action: "DELETE_FRIEND", target: "nom_utilisateur"
     6. SI l'utilisateur demande d'envoyer un message => action: "SEND_MESSAGE", target: "nom_utilisateur", payload: "le message"
     7. SI l'utilisateur demande d'aller sur une page => action: "NAVIGATE", target: "URL"
-    8. SINON => action: "NONE", target: null
+    8. SINON (si la demande ne correspond à rien de précis ou est incompréhensible) => action: "NONE", target: null, et dans le champ "reply", liste clairement et poliment toutes les tâches que tu peux accomplir (voir/lister les amis, bloquer/débloquer un utilisateur, ajouter/supprimer un ami, envoyer un message à quelqu'un, ou naviguer sur une page).
 
     EXEMPLES D'ENTRAÎNEMENT ABSOLUS :
     - "liste mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
@@ -31,7 +32,7 @@ export class AiService implements OnModuleInit {
     - "voir mes amis" -> {"action": "GET_FRIENDS_USERS", "target": null, "payload": null, "reply": "Recherche de vos amis..."}
     - "bloque l'user norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
     - "bloque norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
-    - "salut comment ça va ?" -> {"action": "NONE", "target": null, "payload": null, "reply": "Bonjour ! Je vais bien, merci."}
+    - "blabla ou autre chose" -> {"action": "NONE", "target": null, "payload": null, "reply": "Je n'ai pas compris votre demande. Voici ce que je peux faire pour vous :\n- Lister vos amis\n- Ajouter ou supprimer un ami\n- Bloquer ou débloquer un utilisateur\n- Envoyer un message à un utilisateur\n- Naviguer sur le site"}
 
     IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
 
@@ -42,6 +43,8 @@ export class AiService implements OnModuleInit {
     private readonly chatService: ChatService,
     private readonly prisma: PrismaService,
     private readonly friendsService: FriendsService,
+    @Inject(forwardRef(() => ChatGateway)) // 🟢 Injection avec forwardRef pour éviter les boucles circulaires
+    private readonly chatGateway: ChatGateway, 
   ) {}
 
   async onModuleInit() {
@@ -180,11 +183,15 @@ export class AiService implements OnModuleInit {
                         // 3. On récupère le DM numérique
                         const { channel: dmChannel } = await this.chatService.getOrCreateDirectMessage(minId, maxId);
                         
-                        await this.chatService.saveMessage({
+                        // 🟢 On récupère le message sauvegardé...
+                        const savedDirectMessage = await this.chatService.saveMessage({
                           content: aiResult.payload,
                           channelId: dmChannel.id,
                           authorId: userId,
                         });
+
+                        // 🟢 ...Et on réveille les WebSockets du destinataire manuellement !
+                        await this.chatGateway.notifyNewMessage(dmChannel.id, userId, savedDirectMessage);
                         break;
                         
                       case 'ADD_FRIEND':
@@ -225,7 +232,7 @@ export class AiService implements OnModuleInit {
                     aiResult.reply = logicError.message || "L'action n'a pas pu être effectuée.";
                   }
 
-                  // 4. Sauvegarde de la réponse de l'IA
+                  // 4. Sauvegarde de la réponse de l'IA (On n'a pas besoin de notify ici car c'est un salon local avec le Bot)
                   await this.chatService.saveMessage({
                     content: aiResult.reply || "Action effectuée.",
                     channelId: channelId,
