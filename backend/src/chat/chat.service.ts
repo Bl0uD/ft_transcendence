@@ -5,8 +5,21 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ChatService {
   constructor(private prisma: PrismaService) {}
 
+  // 🛠️ NOUVEAU : Récupère les IDs de tous ceux qui m'ont bloqué OU que j'ai bloqués
+  private async getBlockedUserIds(userId: number) {
+    const blocks = await this.prisma.friendship.findMany({
+      where: {
+        status: 'BLOCKED',
+        OR: [{ requesterId: userId }, { addresseeId: userId }]
+      }
+    });
+    return blocks.map(b => b.requesterId === userId ? b.addresseeId : b.requesterId);
+  }
+
   async getUserChannels(userId: number) {
-    return this.prisma.channel.findMany({
+    const blockedIds = await this.getBlockedUserIds(userId);
+
+    const channels = await this.prisma.channel.findMany({
       where: {
         OR: [
           { type: 'PUBLIC' },
@@ -15,18 +28,31 @@ export class ChatService {
       },
       include: {
         members: {
-          include: {
-            // 🟢 FIX : Ajout de nickname: true ici
-            user: { select: { id: true, username: true, nickname: true, avatar: true } }
-          }
+          include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } }
         }
       },
       orderBy: { name: 'asc' },
     });
+
+    // 🟢 SÉCURITÉ : On cache les conversations avec des utilisateurs bloqués
+    return channels.filter(channel => {
+      if (channel.type === 'DIRECT' || channel.name?.startsWith('dm_')) {
+        const otherMember = channel.members.find(m => m.userId !== userId);
+        if (otherMember && blockedIds.includes(otherMember.userId)) {
+          return false;
+        }
+      }
+      return true;
+    });
   }
 
-  // 1. Création ou récupération d'un DM
   async getOrCreateDirectMessage(userId1: number, userId2: number) {
+    // 🟢 SÉCURITÉ : Bloque la création de salon
+    const blockedIds = await this.getBlockedUserIds(userId1);
+    if (blockedIds.includes(userId2)) {
+      throw new ForbiddenException("Impossible de discuter : l'utilisateur est bloqué.");
+    }
+
     const existingChannels = await this.prisma.channel.findMany({
       where: { type: 'DIRECT' },
       include: { members: true },
@@ -41,7 +67,7 @@ export class ChatService {
 
     const newChannel = await this.prisma.channel.create({
       data: {
-        name: null,
+        name: `dm_${userId1}_${userId2}`,
         type: 'DIRECT',
         userLimit: 2,
         members: {
@@ -56,7 +82,6 @@ export class ChatService {
     return { channel: newChannel, isNewChannel: true };
   }
 
-  // 2. Rejoindre n'importe quel salon par son ID
   async joinChannel(channelId: number, userId: number) {
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
@@ -83,7 +108,6 @@ export class ChatService {
     return channel;
   }
 
-  // 3. Vérification des accès
   async checkAccess(channelId: number, userId: number) {
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
@@ -91,15 +115,23 @@ export class ChatService {
     });
 
     if (!channel) return false;
+
+    // 🟢 SÉCURITÉ : Bloque l'accès à un salon existant si un blocage est survenu
+    if (channel.type === 'DIRECT' || channel.name?.startsWith('dm_')) {
+      const otherMember = channel.members.find(m => m.userId !== userId);
+      if (otherMember) {
+        const blockedIds = await this.getBlockedUserIds(userId);
+        if (blockedIds.includes(otherMember.userId)) return false; 
+      }
+    }
+
     if (channel.type === 'PUBLIC') return true; 
-    
     return channel.members.some((member) => member.userId === userId);
   }
 
-  // 4. Sauvegarder un message
   async saveMessage(data: { content: string; channelId: number; authorId: number }) {
     const hasAccess = await this.checkAccess(data.channelId, data.authorId);
-    if (!hasAccess) throw new ForbiddenException("Non autorisé à envoyer un message ici.");
+    if (!hasAccess) throw new ForbiddenException("Envoi refusé : utilisateur bloqué.");
 
     return this.prisma.message.create({
       data: {
@@ -108,21 +140,18 @@ export class ChatService {
         sender: { connect: { id: data.authorId } },
       },
       include: {
-        // 🟢 FIX : Ajout de nickname: true ici
         sender: { select: { id: true, username: true, nickname: true, avatar: true } },
       },
     });
   }
 
-  // 5. Récupérer l'historique
   async getChannelMessages(channelId: number, userId: number) {
     const hasAccess = await this.checkAccess(channelId, userId);
-    if (!hasAccess) throw new ForbiddenException("Lecture refusée.");
+    if (!hasAccess) throw new ForbiddenException("Lecture refusée : utilisateur bloqué.");
 
     return this.prisma.message.findMany({
       where: { channelId },
       include: {
-        // 🟢 FIX : Ajout de nickname: true ici aussi
         sender: { select: { id: true, username: true, nickname: true, avatar: true } },
       },
       orderBy: { createdAt: 'asc' },

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/axios';
+import { Socket } from 'socket.io-client';
 
 export interface User {
   id: number;
@@ -20,21 +21,19 @@ interface SocialState {
   blockedUsers: User[];
   friendsStatus: Record<number, 'ONLINE' | 'OFFLINE'>; 
   
-  // Actions de récupération
   fetchFriends: () => Promise<void>;
   fetchPendingRequests: () => Promise<void>;
   fetchBlockedUsers: () => Promise<void>;
   fetchAllSocialData: () => Promise<void>;
 
-  // Actions sociales
   sendRequest: (username: string) => Promise<void>;
   acceptRequest: (requestId: number) => Promise<void>;
   removeFriend: (targetUserId: number) => Promise<void>;
   blockUser: (targetUserId: number) => Promise<void>;
   unblockUser: (targetUserId: number) => Promise<void>;
   
-  // Temps réel
   updateFriendStatus: (userId: number, status: 'ONLINE' | 'OFFLINE') => void; 
+  initSocketListeners: (socket: Socket | null) => void;
 }
 
 export const useSocialStore = create<SocialState>((set, get) => ({
@@ -43,11 +42,11 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   blockedUsers: [],
   friendsStatus: {}, 
 
-  // --- RÉCUPÉRATION ---
   fetchFriends: async () => {
     try {
       const res = await api.get<User[]>('/friends');
-      set({ friends: res.data });
+      const friends = res.data;
+      set({ friends });
     } catch (err) { console.error('Erreur fetchFriends', err); }
   },
 
@@ -73,11 +72,8 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     ]);
   },
 
-  // --- ACTIONS ---
   sendRequest: async (username: string) => {
     await api.post('/friends/request', { username });
-    // On ne met pas le store à jour manuellement ici, car le WebSocket va 
-    // déclencher 'socialUpdate' et tout rafraîchir proprement des deux côtés.
   },
 
   acceptRequest: async (requestId: number) => {
@@ -102,9 +98,41 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     await get().fetchBlockedUsers();
   },
 
-  // --- TEMPS RÉEL (WEBSOCKETS) ---
   updateFriendStatus: (userId, status) => 
     set((state) => ({
       friendsStatus: { ...state.friendsStatus, [userId]: status }
     })),
+
+  // 🟢 Écoute des événements WebSocket et redemande automatique à la reconnexion
+  initSocketListeners: (socket) => {
+    if (!socket) return;
+
+    // Nettoyage des anciens écouteurs pour éviter les doublons
+    socket.off('friends_status_response');
+    socket.off('friend_status_update');
+    socket.off('connect');
+
+    const requestStatuses = () => {
+      const friendIds = get().friends.map(f => f.id);
+      if (friendIds.length > 0) {
+        socket.emit('get_friends_status', friendIds);
+      }
+    };
+
+    // Si la socket se connecte ou se reconnecte (très utile pour Opera / Chrome)
+    socket.on('connect', requestStatuses);
+    if (socket.connected) {
+      requestStatuses();
+    }
+
+    socket.on('friends_status_response', (statuses: Record<number, 'ONLINE' | 'OFFLINE'>) => {
+      set((state) => ({
+        friendsStatus: { ...state.friendsStatus, ...statuses }
+      }));
+    });
+
+    socket.on('friend_status_update', ({ userId, status }: { userId: number; status: 'ONLINE' | 'OFFLINE' }) => {
+      get().updateFriendStatus(userId, status);
+    });
+  }
 }));

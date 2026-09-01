@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FriendshipStatus } from '@prisma/client';
 
@@ -40,19 +40,25 @@ export class PostsService {
       });
     }
 
-    const friendships = await this.prisma.friendship.findMany({
+    // 🟢 1. On récupère TOUTES les relations (Amis + Bloqués) en une seule requête
+    const relations = await this.prisma.friendship.findMany({
       where: {
-        status: FriendshipStatus.ACCEPTED,
         OR: [{ requesterId: userId }, { addresseeId: userId }],
       },
     });
 
-    const friendIds = friendships.map((f) =>
-      f.requesterId === userId ? f.addresseeId : f.requesterId
-    );
+    const friendIds = relations
+      .filter((r) => r.status === FriendshipStatus.ACCEPTED)
+      .map((r) => (r.requesterId === userId ? r.addresseeId : r.requesterId));
 
+    const blockedIds = relations
+      .filter((r) => r.status === FriendshipStatus.BLOCKED)
+      .map((r) => (r.requesterId === userId ? r.addresseeId : r.requesterId));
+
+    // 🟢 2. On applique le filtre : on exclut catégoriquement les utilisateurs bloqués
     return this.prisma.post.findMany({
       where: {
+        authorId: { notIn: blockedIds }, // 👈 LA MAGIE EST ICI
         OR: [
           { isPublic: true },
           { authorId: userId },
@@ -84,16 +90,22 @@ export class PostsService {
       });
     }
 
-    // 3. Un utilisateur connecté regarde le profil d'un autre -> On vérifie s'ils sont amis
-    const isFriend = await this.prisma.friendship.findFirst({
+    // 3. Un utilisateur connecté regarde le profil d'un autre -> On cherche n'importe quelle relation
+    const relation = await this.prisma.friendship.findFirst({
       where: {
-        status: FriendshipStatus.ACCEPTED,
         OR: [
           { requesterId: requesterId, addresseeId: targetUserId },
           { requesterId: targetUserId, addresseeId: requesterId },
         ],
       },
     });
+
+    // 🟢 4. SÉCURITÉ : Si l'un des deux a bloqué l'autre, on interdit l'accès aux posts !
+    if (relation && relation.status === FriendshipStatus.BLOCKED) {
+      throw new ForbiddenException("Vous ne pouvez pas voir les publications de cet utilisateur.");
+    }
+
+    const isFriend = relation && relation.status === FriendshipStatus.ACCEPTED;
 
     return this.prisma.post.findMany({
       where: { 

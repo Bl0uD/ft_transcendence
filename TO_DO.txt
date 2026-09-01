@@ -14,3 +14,5 @@ supprimer refresh apres erreur dans /login
 mettre la pp le point vert dans le volet social et retirer le bloquer et supprimer l amis sur le profil de l amis en question.
 
 faire la page error 404
+
+faire en sorte que les patilles de connexion fonctionne

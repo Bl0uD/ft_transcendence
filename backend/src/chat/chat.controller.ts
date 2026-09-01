@@ -9,7 +9,6 @@ export class ChatController {
 
   @Get('channels/:channelId/messages')
   async getMessages(@Param('channelId') channelId: string, @Req() req: any) {
-    // 🔄 MODIFIÉ : On ajoute req.user?.userId pour être sûr de choper l'ID
     const userId = Number(req.user?.sub || req.user?.id || req.user?.userId);
     
     const rawMessages = await this.chatService.getChannelMessages(Number(channelId), userId);
@@ -22,17 +21,15 @@ export class ChatController {
 
   @Get('channels')
   async getChannels(@Req() req: any) {
-    // 🔄 MODIFIÉ : Pareil ici
     const userId = Number(req.user?.sub || req.user?.id || req.user?.userId);
     return this.chatService.getUserChannels(userId);
   }
 
-  @Post('dms')
+  // 🟢 CORRECTION : On écoute bien sur "channels/dm" pour correspondre au frontend
+  @Post('channels/dm')
   async startDirectMessage(@Body('targetUserId') targetUserId: number, @Req() req: any) {
-    // 🔍 LOG : On affiche ce que contient vraiment ton JWT
     console.log("Token Décrypté (req.user) :", req.user);
 
-    // 🔄 MODIFIÉ : Pareil ici
     const rawUserId = req.user?.sub || req.user?.id || req.user?.userId;
     const userId = Number(rawUserId);
     
