@@ -108,18 +108,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!userId || isNaN(channelId)) return;
 
     try {
+      // 1. Sauvegarde du message en base de données
       const savedMessage = await this.chatService.saveMessage({
         content: payload.content,
         channelId: channelId,
         authorId: userId,
       });
 
+      // 2. Envoi classique à tous ceux qui ont "ouvert" le salon
       const roomTarget = String(channelId);
       this.server.to(roomTarget).emit('receive_message', savedMessage);
-      
-      // 🟢 AJOUT ICI : Dit au frontend de rafraîchir la liste des salons 
-      // pour tous les membres de cette conversation
       this.server.to(roomTarget).emit('rooms_updated'); 
+
+      // 3. 🟢 LA SOLUTION : On notifie individuellement TOUS les membres du salon
+      // Cela permet de "réveiller" l'interface de jdupuis même s'il n'a pas ouvert le chat
+      const channel = await this.prisma.channel.findUnique({
+        where: { id: channelId },
+        include: { members: true }, // ⚠️ Adapte 'members' selon le nom exact de ta relation Prisma
+      });
+
+      if (channel && channel.members) {
+        for (const member of channel.members) {
+          // On ne se notifie pas soi-même
+          if (member.userId !== userId) {
+            const targetSocketId = this.activeConnections.get(member.userId);
+            
+            if (targetSocketId) {
+              // Ping direct au socket personnel du destinataire !
+              this.server.to(targetSocketId).emit('receive_message', savedMessage);
+              this.server.to(targetSocketId).emit('rooms_updated');
+            }
+          }
+        }
+      }
 
     } catch (error) {
       console.warn(`[ChatGateway] Erreur envoi message: ${error.message}`);

@@ -7,7 +7,7 @@ import api from '../api/axios';
 import UserAvatar from '../components/UserAvatar';
 import SocialSidebar from '../components/SocialSidebar';
 import TopNavBar from '../components/TopNavBar';
-import AuthModals from '../components/AuthModals'; // 👈 IMPORT DE LA MODALE
+import AuthModals from '../components/AuthModals';
 
 interface Comment { id: number; content: string; createdAt: string; user: any; }
 interface Post {
@@ -31,8 +31,9 @@ export default function HomeFeed() {
   const { socket } = useSocket('/'); 
   const { fetchAllSocialData, blockedUsers } = useSocialStore(); 
 
-  // 🟢 NOUVEL ÉTAT POUR LA MODALE
   const [showAuthModal, setShowAuthModal] = useState(false);
+  // 🟢 NOUVEL ÉTAT : retient quelle vue on veut ouvrir
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
@@ -55,7 +56,10 @@ export default function HomeFeed() {
           loginGlobal(res.data, token);
           navigate('/', { replace: true });
         })
-        .catch(() => { setShowAuthModal(true); });
+        .catch(() => { 
+          setAuthView('login'); 
+          setShowAuthModal(true); 
+        });
     }
   }, [searchParams, navigate, loginGlobal]);
 
@@ -138,11 +142,11 @@ export default function HomeFeed() {
   return (
     <div className="flex h-screen bg-slate-900 text-white overflow-hidden relative">
       
-      {/* 🟢 INTÉGRATION DE LA MODALE */}
-      <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+      {/* 🟢 INTÉGRATION DE LA MODALE AVEC LA PROP initialView */}
+      <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialView={authView} />
 
       {/* 🟢 NAVBAR GLOBALE */}
-      <TopNavBar onLoginClick={() => setShowAuthModal(true)} />
+      <TopNavBar onLoginClick={() => { setAuthView('login'); setShowAuthModal(true); }} />
 
       <div className="flex w-full pt-16 h-full">
         {/* SIDEBAR */}
@@ -153,8 +157,9 @@ export default function HomeFeed() {
             <span className="text-5xl mb-4">👋</span>
             <h3 className="font-bold mb-2">Rejoignez le réseau</h3>
             <p className="text-slate-400 text-sm mb-4">Connectez-vous pour interagir.</p>
-            <button onClick={() => setShowAuthModal(true)} className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg mb-2">Se connecter</button>
-            <button onClick={() => setShowAuthModal(true)} className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">Créer un compte</button>
+            {/* 🟢 BOUTONS QUI CHANGERONT LA VUE DE LA MODALE */}
+            <button onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg mb-2">Se connecter</button>
+            <button onClick={() => { setAuthView('register'); setShowAuthModal(true); }} className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">Créer un compte</button>
           </aside>
         )}
 
@@ -213,7 +218,7 @@ export default function HomeFeed() {
                 )}
                 
                 <div className="px-4 py-3 flex gap-6 border-t border-slate-700/50">
-                  <button onClick={() => user ? toggleLike(post.id) : setShowAuthModal(true)} className={`flex items-center gap-2 text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-slate-400 hover:text-slate-200'}`}>
+                  <button onClick={() => { if (!user) { setAuthView('login'); setShowAuthModal(true); } else toggleLike(post.id); }} className={`flex items-center gap-2 text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-slate-400 hover:text-slate-200'}`}>
                     {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
                   </button>
                   <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
@@ -240,7 +245,7 @@ export default function HomeFeed() {
                         <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-slate-800 border border-slate-600 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:border-indigo-500" />
                       </form>
                     ) : (
-                      <div className="text-center p-2"><button type="button" onClick={() => setShowAuthModal(true)} className="text-sm text-indigo-400 hover:underline">Se connecter pour commenter</button></div>
+                      <div className="text-center p-2"><button type="button" onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="text-sm text-indigo-400 hover:underline">Se connecter pour commenter</button></div>
                     )}
                   </div>
                 )}

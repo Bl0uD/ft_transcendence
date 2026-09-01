@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 
-export default function TwoFactorVerify() {
+interface TwoFactorVerifyProps {
+  onClose?: () => void; // 🟢 On ajoute la prop onClose
+}
+
+export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +26,14 @@ export default function TwoFactorVerify() {
       });
 
       login(response.data.user, response.data.access_token);
-      navigate('/');
+      
+      // 🟢 On ferme la modale si la fonction est fournie
+      if (onClose) {
+        onClose();
+      } else {
+        navigate('/'); // Fallback au cas où
+      }
+      
     } catch (err: any) {
       setError(err.response?.data?.message || 'Code invalide. Veuillez réessayer.');
     } finally {
@@ -31,7 +42,8 @@ export default function TwoFactorVerify() {
   };
 
   return (
-    <div className="w-full max-w-md space-y-8 bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-xl mx-auto mt-12 text-slate-100">
+    // 🟢 On retire les bordures/fonds (bg-slate-900, border, shadow) car la modale parent s'en charge déjà !
+    <div className="w-full space-y-6 text-slate-100">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-white">Double Authentification</h2>
         <p className="mt-2 text-sm text-slate-400">
@@ -53,7 +65,7 @@ export default function TwoFactorVerify() {
             required
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center tracking-[0.5em] text-2xl font-mono"
+            className="w-full rounded-lg border border-slate-700 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center tracking-[0.5em] text-2xl font-mono"
             placeholder="000000"
           />
         </div>

@@ -31,7 +31,8 @@ export class ChatService {
           include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } }
         }
       },
-      orderBy: { name: 'asc' },
+      // 🟢 CHANGEMENT : On pré-trie par date de mise à jour au lieu du nom
+      orderBy: { updatedAt: 'desc' },
     });
 
     // 🟢 SÉCURITÉ : On cache les conversations avec des utilisateurs bloqués
@@ -132,6 +133,12 @@ export class ChatService {
   async saveMessage(data: { content: string; channelId: number; authorId: number }) {
     const hasAccess = await this.checkAccess(data.channelId, data.authorId);
     if (!hasAccess) throw new ForbiddenException("Envoi refusé : utilisateur bloqué.");
+
+    // 🟢 MISE À JOUR : On actualise la date du salon pour que le tri remonte la conversation
+    await this.prisma.channel.update({
+      where: { id: data.channelId },
+      data: { updatedAt: new Date() }
+    });
 
     return this.prisma.message.create({
       data: {

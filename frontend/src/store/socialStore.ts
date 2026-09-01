@@ -111,6 +111,10 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     socket.off('friends_status_response');
     socket.off('friend_status_update');
     socket.off('connect');
+    // 🟢 NOUVEAU : Nettoyage des écouteurs sociaux
+    socket.off('socialUpdate');
+    socket.off('friend_request_received');
+    socket.off('friend_request_accepted');
 
     const requestStatuses = () => {
       const friendIds = get().friends.map(f => f.id);
@@ -134,5 +138,14 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     socket.on('friend_status_update', ({ userId, status }: { userId: number; status: 'ONLINE' | 'OFFLINE' }) => {
       get().updateFriendStatus(userId, status);
     });
+
+    // 🟢 NOUVEAU : Les événements sociaux globaux rafraîchissent automatiquement la donnée
+    const refreshSocial = () => {
+      get().fetchAllSocialData();
+    };
+    
+    socket.on('socialUpdate', refreshSocial);
+    socket.on('friend_request_received', refreshSocial);
+    socket.on('friend_request_accepted', refreshSocial);
   }
 }));

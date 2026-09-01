@@ -15,7 +15,13 @@ interface Message {
   sender?: { id: number; username: string; nickname?: string | null; avatar?: string; };
 }
 interface RoomMember { userId: number; user: User; }
-interface Room { id: number; name: string | null; type?: string; members?: RoomMember[]; }
+interface Room { 
+  id: number; 
+  name: string | null; 
+  type?: string; 
+  members?: RoomMember[]; 
+  updatedAt?: string; // 🟢 AJOUT : Pour savoir quelle conversation est la plus récente
+}
 
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
   if (!account || !account.username) return 'Visiteur';
@@ -46,11 +52,8 @@ export const GlobalChatWidget: React.FC = () => {
       const realAiRoom = fetchedRooms.find((r: Room) => r.name?.startsWith('ai-chat-'));
       
       if (!realAiRoom) {
-        fetchedRooms.push({
-          id: -1, 
-          name: `ai-chat-${user.id}`,
-        });
-      } else if (activeRoom === -1) {
+        fetchedRooms.push({ id: -1, name: `ai-chat-${user.id}` });
+      } else if (useChatStore.getState().activeRoom === -1) { 
         setActiveRoom(realAiRoom.id);
       }
       
@@ -60,13 +63,10 @@ export const GlobalChatWidget: React.FC = () => {
     }
   };
 
-  // 🟢 AJOUT : On force le rafraîchissement si l'activeRoom n'est pas dans la liste actuelle
   useEffect(() => {
     if (activeRoom !== null && user) {
       const roomExists = rooms.some(r => r.id === activeRoom);
-      if (!roomExists) {
-        fetchRooms();
-      }
+      if (!roomExists) fetchRooms();
     }
   }, [activeRoom, user, rooms]);
 
@@ -86,17 +86,29 @@ export const GlobalChatWidget: React.FC = () => {
 
   useEffect(() => {
     const handleOpenChat = (e: CustomEvent<{ roomId: number }>) => {
-      const roomId = e.detail.roomId;
-      setIsChatOpen(true); // Ouvre la bulle
-      setActiveRoom(roomId); // Sélectionne la conversation
+      setIsChatOpen(true); 
+      setActiveRoom(e.detail.roomId); 
     };
-
     window.addEventListener('open-chat-room', handleOpenChat as EventListener);
-    return () => {
-      window.removeEventListener('open-chat-room', handleOpenChat as EventListener);
-    };
+    return () => window.removeEventListener('open-chat-room', handleOpenChat as EventListener);
   }, []);
   
+  useEffect(() => {
+    if (!isConnected || !socket || !user) return;
+
+    const handleGlobalUpdate = () => {
+      fetchRooms();
+    };
+
+    socket.on('rooms_updated', handleGlobalUpdate);
+    socket.on('receive_message', handleGlobalUpdate); 
+
+    return () => {
+      socket.off('rooms_updated', handleGlobalUpdate);
+      socket.off('receive_message', handleGlobalUpdate);
+    };
+  }, [isConnected, socket, user]); 
+
   useEffect(() => {
     if (!isConnected || !socket || !user || activeRoom === null) {
       if (activeRoom === null) setMessages([]);
@@ -105,9 +117,7 @@ export const GlobalChatWidget: React.FC = () => {
     
     if (activeRoom === -1) {
       setMessages([{
-        id: 'welcome-ai',
-        senderId: 0,
-        senderName: 'Assistant IA',
+        id: 'welcome-ai', senderId: 0, senderName: 'Assistant IA',
         content: "Bonjour ! Je suis votre assistant IA. Comment puis-je vous aider aujourd'hui ?"
       }]);
       return; 
@@ -122,15 +132,13 @@ export const GlobalChatWidget: React.FC = () => {
     };
     
     socket.on('load_history', handleHistory);
-    socket.on('receive_message', handleReceiveMessage);
-    socket.on('rooms_updated', fetchRooms);
+    socket.on('receive_message', handleReceiveMessage); 
     
     socket.emit('joinChannel', { channelId: activeRoom });
     
     return () => {
       socket.off('load_history', handleHistory);
       socket.off('receive_message', handleReceiveMessage);
-      socket.off('rooms_updated', fetchRooms);
     };
   }, [socket, activeRoom, isConnected, user]);
 
@@ -151,9 +159,7 @@ export const GlobalChatWidget: React.FC = () => {
     if (isAiRoom) {
       if (isAiLoading || aiCooldown > 0) return; 
       
-      setMessages(prev => [...prev, { 
-        id: Date.now(), senderId: user.id, senderName: user.username, content: content 
-      }]);
+      setMessages(prev => [...prev, { id: Date.now(), senderId: user.id, senderName: user.username, content: content }]);
       setIsAiLoading(true);
 
       try {
@@ -162,18 +168,10 @@ export const GlobalChatWidget: React.FC = () => {
           (dataStr) => {
             try {
               const parsed = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr;
-              
               if (parsed.done) {
                 setIsAiLoading(false); 
-
                 if (parsed.result) {
-                  setMessages((prev) => [...prev, { 
-                    id: Date.now() + 1, 
-                    senderId: 0, 
-                    senderName: 'Assistant IA', 
-                    content: parsed.result.reply 
-                  }]);
-
+                  setMessages((prev) => [...prev, { id: Date.now() + 1, senderId: 0, senderName: 'Assistant IA', content: parsed.result.reply }]);
                   if (parsed.result.action === 'NAVIGATE' && parsed.result.target) {
                     setTimeout(() => navigate(parsed.result.target), 1500);
                   }
@@ -194,10 +192,7 @@ export const GlobalChatWidget: React.FC = () => {
       }
 
     } else {
-      socket.emit('send_message', {
-        channelId: activeRoom,
-        content: content,
-      });
+      socket.emit('send_message', { channelId: activeRoom, content: content });
     }
   };
 
@@ -216,12 +211,20 @@ export const GlobalChatWidget: React.FC = () => {
 
   if (!user) return null;
 
+  // 🟢 NOUVEAU TRI : L'IA en haut, puis du plus récent au plus ancien
   const sortedRooms = [...rooms].sort((a, b) => {
     const isA_AI = a.name?.startsWith('ai-chat-');
     const isB_AI = b.name?.startsWith('ai-chat-');
+    
+    // 1. L'IA reste toujours accrochée tout en haut
     if (isA_AI && !isB_AI) return -1;
     if (!isA_AI && isB_AI) return 1;
-    return 0;
+    
+    // 2. Tri par date de mise à jour (la plus récente d'abord)
+    const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    
+    return timeB - timeA;
   });
 
   const activeRoomInfo = activeRoom ? rooms.find(r => r.id === activeRoom) : null;

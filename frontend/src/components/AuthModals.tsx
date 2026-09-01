@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import TwoFactorVerify from './TwoFactorVerify';
@@ -6,11 +6,11 @@ import TwoFactorVerify from './TwoFactorVerify';
 interface AuthModalsProps {
   isOpen: boolean;
   onClose: () => void;
+  initialView?: 'login' | 'register'; 
 }
 
-export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
-  // Détermine si on affiche la connexion ou l'inscription
-  const [isLoginView, setIsLoginView] = useState(true);
+export default function AuthModals({ isOpen, onClose, initialView = 'login' }: AuthModalsProps) {
+  const [isLoginView, setIsLoginView] = useState(initialView === 'login');
 
   const loginGlobal = useAuthStore((state: any) => state.login);
   const requires2FA = useAuthStore((state: any) => state.requires2FA);
@@ -29,6 +29,13 @@ export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegLoading, setIsRegLoading] = useState(false);
 
+  // 🟢 Permet de basculer sur la bonne vue dès l'ouverture
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoginView(initialView === 'login');
+    }
+  }, [isOpen, initialView]);
+
   if (!isOpen) return null;
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -37,7 +44,12 @@ export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
       const response = await api.post('/auth/login', { identifier, password });
       localStorage.setItem('access_token', response.data.access_token);
       loginGlobal(response.data.user, response.data.access_token);
-      onClose(); // On ferme la modale !
+      
+      // On ne ferme la modale QUE SI la 2FA n'est pas requise
+      if (!response.data.user.isTwoFactorEnabled) {
+        onClose();
+      }
+      
       setIdentifier(''); setPassword('');
     } catch (err: any) { 
       setLoginError(err.response?.data?.message || 'Erreur'); 
@@ -52,7 +64,7 @@ export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
       const response = await api.post('/auth/register', { email: regEmail, username: regUsername, password: regPassword });
       setRegSuccess(response.data.message || 'Succès !');
       setTimeout(() => {
-        setIsLoginView(true); // On bascule sur la connexion
+        setIsLoginView(true);
         setIdentifier(regUsername);
         setRegEmail(''); setRegUsername(''); setRegPassword(''); setRegSuccess('');
       }, 2000);
@@ -69,8 +81,8 @@ export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
         <button onClick={onClose} className="absolute top-4 right-5 text-slate-400 hover:text-white transition-colors text-xl">✕</button>
         
         {isLoginView ? (
-          /* ================= VUE CONNEXION ================= */
-          requires2FA ? <TwoFactorVerify /> : (
+          /* 🟢 CORRECTION ICI : Ajout de onClose={onClose} */
+          requires2FA ? <TwoFactorVerify onClose={onClose} /> : (
             <>
               <div className="text-center"><h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Transcendence</h2></div>
               {loginError && <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">{loginError}</div>}
@@ -89,7 +101,6 @@ export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
             </>
           )
         ) : (
-          /* ================= VUE INSCRIPTION ================= */
           <>
             <div className="text-center"><h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">S'inscrire</h2></div>
             {regSuccess && <div className="p-3 text-sm text-emerald-400 bg-emerald-500/10 rounded-xl">{regSuccess} 🎉</div>}
@@ -97,7 +108,7 @@ export default function AuthModals({ isOpen, onClose }: AuthModalsProps) {
             <form className="space-y-4" onSubmit={handleRegisterSubmit}>
               <input type="text" placeholder="Username" required value={regUsername} onChange={(e) => setRegUsername(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 focus:border-indigo-500 focus:outline-none" />
               <input type="email" placeholder="Email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 focus:border-indigo-500 focus:outline-none" />
-              <input type="password" placeholder="Mot de passe" required value={regPassword} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 focus:border-indigo-500 focus:outline-none" />
+              <input type="password" placeholder="Mot de passe" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 focus:border-indigo-500 focus:outline-none" />
               <button type="submit" disabled={isRegLoading} className="w-full bg-indigo-600 px-4 py-2.5 rounded-xl text-sm font-semibold">{isRegLoading ? '...' : "S'inscrire"}</button>
             </form>
             <div className="text-center text-sm text-slate-400 mt-4">
