@@ -7,13 +7,13 @@ import { ChatService } from '../chat/chat.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FriendsService } from '../friends/friends.service';
 import { ChatGateway } from '../chat/chat.gateway';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // 🟢 Import Gemini
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private readonly ollamaUrl = 'http://ai:11434/api/chat';
-  private genAI: GoogleGenerativeAI | null = null; // 🟢 Instance Gemini
+  private genAI: GoogleGenerativeAI | null = null;
   
   private readonly systemPrompt = `Tu es une API de routage strict. Tu DOIS classifier la requête selon l'algorithme ci-dessous.
     Réponds UNIQUEMENT avec un objet JSON.
@@ -39,7 +39,7 @@ export class AiService implements OnModuleInit {
     IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
 
   private aiBotId: number;
-  private geminiBotId: number; // 🟢 ID spécifique au bot Gemini
+  private geminiBotId: number; 
 
   constructor(
     private readonly httpService: HttpService,
@@ -49,7 +49,6 @@ export class AiService implements OnModuleInit {
     @Inject(forwardRef(() => ChatGateway))
     private readonly chatGateway: ChatGateway, 
   ) {
-    // 🟢 Initialisation sécurisée de Gemini
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       this.genAI = new GoogleGenerativeAI(apiKey);
@@ -64,7 +63,6 @@ export class AiService implements OnModuleInit {
 
   private async ensureAiBotsExist() {
     try {
-      // Bot Ollama
       const ollamaBot = await this.prisma.user.upsert({
         where: { username: 'Bot IA' },
         update: {},
@@ -76,7 +74,6 @@ export class AiService implements OnModuleInit {
       });
       this.aiBotId = ollamaBot.id;
 
-      // 🟢 Bot Gemini
       const geminiBot = await this.prisma.user.upsert({
         where: { username: 'Gemini IA' },
         update: {},
@@ -114,7 +111,6 @@ export class AiService implements OnModuleInit {
     try {
       const roomName = `ai-gemini-chat-${userId}`;
 
-      // 1. Récupérer ou créer le salon spécifique Gemini
       let aiChannel = await this.prisma.channel.findFirst({
         where: { name: roomName }
       });
@@ -136,20 +132,17 @@ export class AiService implements OnModuleInit {
 
       const channelId = aiChannel.id;
 
-      // 2. Sauvegarde du message utilisateur
       await this.chatService.saveMessage({
         content: lastUserMessage.content,
         channelId: channelId,
         authorId: userId,
       });
 
-      // 3. Formatage de l'historique pour l'API Gemini
       const formattedHistory = userMessages.slice(0, -1).map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       }));
 
-      // 4. Appel à Gemini 1.5 Flash
       const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       const chat = model.startChat({ history: formattedHistory });
       
@@ -158,18 +151,17 @@ export class AiService implements OnModuleInit {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no'); // Utile derrière un proxy (comme Caddy)
+      res.setHeader('X-Accel-Buffering', 'no'); 
 
       let fullResponse = '';
 
-      // 5. Streaming des chunks
-      for await (const chunk of resultStream) {
+      // 🟢 CORRECTION ICI : Ajout de .stream pour itérer correctement !
+      for await (const chunk of resultStream.stream) {
         const chunkText = chunk.text();
         fullResponse += chunkText;
         res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
       }
 
-      // 6. Sauvegarde de la réponse complète du bot Gemini
       await this.chatService.saveMessage({
         content: fullResponse,
         channelId: channelId,
@@ -299,9 +291,10 @@ export class AiService implements OnModuleInit {
                         const maxId = Math.max(userId, targetUser.id);
                         
                         const { channel: dmChannel } = await this.chatService.getOrCreateDirectMessage(minId, maxId);
-                        
+                        const messageContent = aiResult.payload || "Salutations !";
+
                         const savedDirectMessage = await this.chatService.saveMessage({
-                          content: aiResult.payload,
+                          content: messageContent,
                           channelId: dmChannel.id,
                           authorId: userId,
                         });

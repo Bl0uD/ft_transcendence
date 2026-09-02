@@ -289,6 +289,7 @@ export const GlobalChatWidget: React.FC = () => {
                           </div>
                         )}
                         <span className="font-medium text-sm text-slate-200">{name}</span>
+                        <span className="font-medium text-sm text-slate-200">{}</span>
                       </li>
                     );
                   })
