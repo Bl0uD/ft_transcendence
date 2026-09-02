@@ -20,7 +20,7 @@ interface Room {
   name: string | null; 
   type?: string; 
   members?: RoomMember[]; 
-  updatedAt?: string; // 🟢 AJOUT : Pour savoir quelle conversation est la plus récente
+  updatedAt?: string; 
 }
 
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
@@ -42,6 +42,9 @@ export const GlobalChatWidget: React.FC = () => {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiCooldown, setAiCooldown] = useState(0);
 
+  // 🟢 NOUVEAU : État du Toggle (Local Ollama vs Gemini)
+  const [aiProvider, setAiProvider] = useState<'ollama' | 'gemini'>('ollama');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchRooms = async () => {
@@ -49,13 +52,16 @@ export const GlobalChatWidget: React.FC = () => {
       const response = await api.get('/chat/channels');
       const fetchedRooms = response.data;
       
-      const realAiRoom = fetchedRooms.find((r: Room) => r.name?.startsWith('ai-chat-'));
+      // 🟢 Récupération des DEUX salons IA
+      const realAiRoom = fetchedRooms.find((r: Room) => r.name === `ai-chat-${user.id}`);
+      const realGeminiRoom = fetchedRooms.find((r: Room) => r.name === `ai-gemini-chat-${user.id}`);
       
-      if (!realAiRoom) {
-        fetchedRooms.push({ id: -1, name: `ai-chat-${user.id}` });
-      } else if (useChatStore.getState().activeRoom === -1) { 
-        setActiveRoom(realAiRoom.id);
-      }
+      if (!realAiRoom) fetchedRooms.push({ id: -1, name: `ai-chat-${user.id}` });
+      if (!realGeminiRoom) fetchedRooms.push({ id: -2, name: `ai-gemini-chat-${user.id}` });
+      
+      const currentActive = useChatStore.getState().activeRoom;
+      if (currentActive === -1 && realAiRoom) setActiveRoom(realAiRoom.id);
+      if (currentActive === -2 && realGeminiRoom) setActiveRoom(realGeminiRoom.id);
       
       setRooms(fetchedRooms);
     } catch (err) {
@@ -77,36 +83,22 @@ export const GlobalChatWidget: React.FC = () => {
   }, [aiCooldown]);
 
   useEffect(() => {
-    if (!user) {
-      setIsChatOpen(false);
-      return;
-    }
+    if (!user) { setIsChatOpen(false); return; }
     fetchRooms();
   }, [user]);
 
   useEffect(() => {
-    const handleOpenChat = (e: CustomEvent<{ roomId: number }>) => {
-      setIsChatOpen(true); 
-      setActiveRoom(e.detail.roomId); 
-    };
+    const handleOpenChat = (e: CustomEvent<{ roomId: number }>) => { setIsChatOpen(true); setActiveRoom(e.detail.roomId); };
     window.addEventListener('open-chat-room', handleOpenChat as EventListener);
     return () => window.removeEventListener('open-chat-room', handleOpenChat as EventListener);
   }, []);
   
   useEffect(() => {
     if (!isConnected || !socket || !user) return;
-
-    const handleGlobalUpdate = () => {
-      fetchRooms();
-    };
-
+    const handleGlobalUpdate = () => fetchRooms();
     socket.on('rooms_updated', handleGlobalUpdate);
     socket.on('receive_message', handleGlobalUpdate); 
-
-    return () => {
-      socket.off('rooms_updated', handleGlobalUpdate);
-      socket.off('receive_message', handleGlobalUpdate);
-    };
+    return () => { socket.off('rooms_updated', handleGlobalUpdate); socket.off('receive_message', handleGlobalUpdate); };
   }, [isConnected, socket, user]); 
 
   useEffect(() => {
@@ -115,36 +107,40 @@ export const GlobalChatWidget: React.FC = () => {
       return;
     }
     
-    if (activeRoom === -1) {
+    // 🟢 Gère les messages de bienvenue pour les deux IA
+    if (activeRoom === -1 || activeRoom === -2) {
+      const botName = activeRoom === -1 ? 'Assistant IA (Local)' : 'Gemini IA';
       setMessages([{
-        id: 'welcome-ai', senderId: 0, senderName: 'Assistant IA',
-        content: "Bonjour ! Je suis votre assistant IA. Comment puis-je vous aider aujourd'hui ?"
+        id: 'welcome-ai', senderId: 0, senderName: botName,
+        content: `Bonjour ! Je suis ${botName}. Comment puis-je vous aider aujourd'hui ?`
       }]);
       return; 
     }
 
-    const handleHistory = (hist: Message[]) => {
-      if (Array.isArray(hist)) setMessages(hist);
-    };
-    
-    const handleReceiveMessage = (msg: Message) => {
-      setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]);
-    };
+    const handleHistory = (hist: Message[]) => { if (Array.isArray(hist)) setMessages(hist); };
+    const handleReceiveMessage = (msg: Message) => { setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); };
     
     socket.on('load_history', handleHistory);
     socket.on('receive_message', handleReceiveMessage); 
     
     socket.emit('joinChannel', { channelId: activeRoom });
     
-    return () => {
-      socket.off('load_history', handleHistory);
-      socket.off('receive_message', handleReceiveMessage);
-    };
+    return () => { socket.off('load_history', handleHistory); socket.off('receive_message', handleReceiveMessage); };
   }, [socket, activeRoom, isConnected, user]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isChatOpen, isAiLoading]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isChatOpen, isAiLoading]);
+
+  // 🟢 NOUVEAU : Fonction pour basculer de salon quand on clique sur le Toggle
+  const toggleAiProvider = () => {
+    const newProvider = aiProvider === 'ollama' ? 'gemini' : 'ollama';
+    setAiProvider(newProvider);
+    
+    const targetName = newProvider === 'ollama' ? `ai-chat-${user.id}` : `ai-gemini-chat-${user.id}`;
+    const targetRoom = rooms.find(r => r.name === targetName);
+    
+    // On bascule sur le salon en base, ou sur le faux salon (-1, -2) si vierge
+    setActiveRoom(targetRoom ? targetRoom.id : (newProvider === 'ollama' ? -1 : -2));
+  };
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,7 +148,7 @@ export const GlobalChatWidget: React.FC = () => {
     if (!content || !isConnected || !socket || activeRoom === null) return;
 
     const currentRoom = rooms.find(r => r.id === activeRoom);
-    const isAiRoom = currentRoom?.name?.startsWith('ai-chat-');
+    const isAiRoom = currentRoom?.name?.startsWith('ai-chat-') || currentRoom?.name?.startsWith('ai-gemini-chat-');
 
     setChatInput('');
 
@@ -165,27 +161,47 @@ export const GlobalChatWidget: React.FC = () => {
       try {
         await streamAIChat(
           content,
-          (dataStr) => {
-            try {
-              const parsed = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr;
-              if (parsed.done) {
-                setIsAiLoading(false); 
-                if (parsed.result) {
-                  setMessages((prev) => [...prev, { id: Date.now() + 1, senderId: 0, senderName: 'Assistant IA', content: parsed.result.reply }]);
-                  if (parsed.result.action === 'NAVIGATE' && parsed.result.target) {
-                    setTimeout(() => navigate(parsed.result.target), 1500);
+          aiProvider,
+          (chunk) => {
+            if (typeof chunk === 'string') {
+              // GEMINI : flux de texte en continu
+              setMessages(prev => {
+                const newMsgs = [...prev];
+                const lastIndex = newMsgs.length - 1;
+                const lastMsg = newMsgs[lastIndex];
+              
+                if (lastMsg && lastMsg.senderId === 0 && lastMsg.id !== 'welcome-ai') { 
+                  // 🟢 CORRECTION : On clone l'objet message pour éviter la mutation directe
+                  newMsgs[lastIndex] = { ...lastMsg, content: lastMsg.content + chunk };
+                } else { 
+                  newMsgs.push({ 
+                    id: Date.now() + 1, 
+                    senderId: 0, 
+                    senderName: aiProvider === 'gemini' ? 'Gemini IA' : 'Assistant IA', 
+                    content: chunk 
+                  }); 
+                }
+              return newMsgs;
+            });
+          } else {
+              // 🟢 CORRECTION : On intercepte les erreurs (ex: Clé API manquante)
+              if (chunk.error) {
+                setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Système', content: chunk.error }]);
+              } 
+              // OLLAMA : Objet JSON structuré
+              else if (chunk.done) {
+                if (chunk.result) {
+                  setMessages((prev) => [...prev, { id: Date.now() + 1, senderId: 0, senderName: 'Assistant IA', content: chunk.result.reply }]);
+                  if (chunk.result.action === 'NAVIGATE' && chunk.result.target) {
+                    setTimeout(() => navigate(chunk.result.target), 1500);
                   }
-                } else if (parsed.error) {
-                  setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: parsed.error }]);
                 }
               }
-            } catch (err) {}
+            }
           },
-          () => {
-             setIsAiLoading(false);
-             setAiCooldown(60);
-          }
+          () => { setAiCooldown(60); }
         );
+        setIsAiLoading(false); 
       } catch (error) {
         setIsAiLoading(false);
         setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: "Impossible de joindre l'API." }]);
@@ -200,35 +216,35 @@ export const GlobalChatWidget: React.FC = () => {
     if (!room) return { name: 'Chargement...', icon: '⏳', targetUser: null };
     if (room.type === 'DIRECT' || room.name?.startsWith('dm_')) {
       const otherMember = room.members?.find(m => m.userId !== user?.id);
-      if (otherMember?.user) {
-        return { name: getDisplayName(otherMember.user), icon: '💬', targetUser: otherMember.user };
-      }
+      if (otherMember?.user) return { name: getDisplayName(otherMember.user), icon: '💬', targetUser: otherMember.user };
       return { name: 'Message Privé', icon: '💬', targetUser: null };
     }
-    if (room.name?.startsWith('ai-chat-')) return { name: 'Assistant IA', icon: '🤖', targetUser: null };
+    // 🟢 Nom d'affichage commun pour les deux IA dans la liste des salons
+    if (room.name?.startsWith('ai-chat-') || room.name?.startsWith('ai-gemini-chat-')) {
+      return { name: 'Assistant IA', icon: '🤖', targetUser: null };
+    }
     return { name: room.name ? `# ${room.name}` : 'Salon inconnu', icon: '👥', targetUser: null };
   };
 
   if (!user) return null;
 
-  // 🟢 NOUVEAU TRI : L'IA en haut, puis du plus récent au plus ancien
-  const sortedRooms = [...rooms].sort((a, b) => {
+  // 🟢 NOUVEAU : On cache la conversation Gemini de la liste principale 
+  // pour n'avoir qu'un seul onglet "Assistant IA" cliquable.
+  const uniqueRooms = rooms.filter(room => !room.name?.startsWith('ai-gemini-chat-'));
+
+  const sortedRooms = [...uniqueRooms].sort((a, b) => {
     const isA_AI = a.name?.startsWith('ai-chat-');
     const isB_AI = b.name?.startsWith('ai-chat-');
-    
-    // 1. L'IA reste toujours accrochée tout en haut
     if (isA_AI && !isB_AI) return -1;
     if (!isA_AI && isB_AI) return 1;
     
-    // 2. Tri par date de mise à jour (la plus récente d'abord)
     const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    
     return timeB - timeA;
   });
 
   const activeRoomInfo = activeRoom ? rooms.find(r => r.id === activeRoom) : null;
-  const isCurrentRoomAi = activeRoomInfo?.name?.startsWith('ai-chat-');
+  const isCurrentRoomAi = activeRoomInfo?.name?.startsWith('ai-chat-') || activeRoomInfo?.name?.startsWith('ai-gemini-chat-');
 
   return (
     <div className="fixed bottom-6 right-6 z-[90] flex flex-col items-end">
@@ -260,6 +276,20 @@ export const GlobalChatWidget: React.FC = () => {
                     >
                       {roomInfo.name}
                     </span>
+
+                    {/* 🟢 LE BOUTON TOGGLE (SWITCH) S'AFFICHE ICI UNIQUEMENT DANS L'IA */}
+                    {isCurrentRoomAi && (
+                      <div className="flex items-center gap-2 ml-3 bg-slate-900/50 p-1 px-2 rounded-full border border-slate-700">
+                        <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'ollama' ? 'text-indigo-400' : 'text-slate-600'}`}>Local</span>
+                        <button 
+                          onClick={toggleAiProvider}
+                          className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${aiProvider === 'gemini' ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                        >
+                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${aiProvider === 'gemini' ? 'translate-x-4' : 'translate-x-1'}`}/>
+                        </button>
+                        <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'gemini' ? 'text-emerald-400' : 'text-slate-600'}`}>Gemini</span>
+                      </div>
+                    )}
                   </div>
                 );
               })() : (
@@ -280,7 +310,17 @@ export const GlobalChatWidget: React.FC = () => {
                   sortedRooms.map(room => {
                     const { name, icon, targetUser } = getRoomDisplayInfo(room);
                     return (
-                      <li key={room.id} onClick={() => setActiveRoom(room.id)} className="p-4 border-b border-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center gap-3 transition-colors">
+                      <li key={room.id} onClick={() => {
+                          // 🟢 Si on clique sur l'IA depuis la liste principale, 
+                          // ça ouvre la room liée au toggle actuellement sélectionné !
+                          if (room.name?.startsWith('ai-chat-')) {
+                              const targetName = aiProvider === 'ollama' ? `ai-chat-${user.id}` : `ai-gemini-chat-${user.id}`;
+                              const targetRoom = rooms.find(r => r.name === targetName);
+                              setActiveRoom(targetRoom ? targetRoom.id : (aiProvider === 'ollama' ? -1 : -2));
+                          } else {
+                              setActiveRoom(room.id);
+                          }
+                      }} className="p-4 border-b border-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center gap-3 transition-colors">
                         {targetUser ? (
                           <UserAvatar avatarUrl={targetUser.avatar} username={name} className="w-10 h-10 border border-slate-700" />
                         ) : (
@@ -289,7 +329,6 @@ export const GlobalChatWidget: React.FC = () => {
                           </div>
                         )}
                         <span className="font-medium text-sm text-slate-200">{name}</span>
-                        <span className="font-medium text-sm text-slate-200">{}</span>
                       </li>
                     );
                   })

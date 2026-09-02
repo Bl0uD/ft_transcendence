@@ -143,7 +143,7 @@ export class AiService implements OnModuleInit {
         parts: [{ text: msg.content }],
       }));
 
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const chat = model.startChat({ history: formattedHistory });
       
       const resultStream = await chat.sendMessageStream(lastUserMessage.content);
@@ -171,9 +171,10 @@ export class AiService implements OnModuleInit {
       res.write('data: [DONE]\n\n');
       res.end();
 
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error('Erreur Stream Gemini:', error);
-      res.write(`data: ${JSON.stringify({ error: "Erreur lors de la génération avec Gemini." })}\n\n`);
+      // 🟢 On envoie l'erreur détaillée au frontend pour comprendre !
+      res.write(`data: ${JSON.stringify({ error: `Erreur Gemini : ${error.message || error}` })}\n\n`);
       res.end();
     }
   }
