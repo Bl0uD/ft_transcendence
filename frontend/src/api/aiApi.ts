@@ -2,11 +2,12 @@ import api from './axios'; // On importe api pour réutiliser ses en-têtes d'au
 
 export async function streamAIChat(
   prompt: string,
-  onChunk: (chunk: string) => void,
+  mode: 'ollama' | 'gemini', // 🟢 Nouveau paramètre pour cibler le bon modèle
+  onChunk: (chunk: string | any) => void,
   onRateLimit: () => void
 ): Promise<void> {
   try {
-    // 1. Récupération du token depuis localStorage ou les headers par défaut d’Axios
+    // 1. Récupération du token
     const token =
       localStorage.getItem('access_token') ||
       localStorage.getItem('token');
@@ -17,18 +18,22 @@ export async function streamAIChat(
       'Content-Type': 'application/json',
     };
 
-    // On applique le header Authorization s'il existe
     if (axiosAuthHeader) {
       headers['Authorization'] = axiosAuthHeader;
     } else if (token) {
       headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     }
 
-    // 2. Requête Fetch configurée avec authentification et support des cookies
-    const response = await fetch('/api/ai/chat/stream', {
+    // 2. Sélection de la route en fonction du mode
+    const endpoint = mode === 'gemini' 
+      ? '/api/ai/gemini/stream' 
+      : '/api/ai/chat/stream';
+
+    // 3. Requête Fetch configurée
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers,
-      credentials: 'include', // Permet d'envoyer les cookies (JWT/session) si utilisé
+      credentials: 'include',
       body: JSON.stringify({
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -47,7 +52,7 @@ export async function streamAIChat(
       throw new Error("Erreur lors de la communication avec l'IA.");
     }
 
-    // 3. Traitement du flux SSE
+    // 4. Traitement du flux SSE
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
@@ -67,8 +72,16 @@ export async function streamAIChat(
 
         try {
           const parsed = JSON.parse(cleanLine);
-          onChunk(parsed);
+          
+          // 🟢 Si c'est Gemini, on extrait directement le texte pour l'afficher
+          if (mode === 'gemini' && parsed.text) {
+             onChunk(parsed.text);
+          } else {
+             // Si c'est Ollama (JSON structuré)
+             onChunk(parsed);
+          }
         } catch {
+          // Si le JSON n'est pas complet ou invalide, on passe le texte brut
           onChunk(cleanLine);
         }
       }

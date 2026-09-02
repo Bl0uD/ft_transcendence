@@ -6,12 +6,14 @@ import { ChatMessageDto } from './dto/chat-prompt.dto';
 import { ChatService } from '../chat/chat.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { FriendsService } from '../friends/friends.service';
-import { ChatGateway } from '../chat/chat.gateway'; // 🟢 Import du Gateway
+import { ChatGateway } from '../chat/chat.gateway';
+import { GoogleGenerativeAI } from '@google/generative-ai'; // 🟢 Import Gemini
 
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private readonly ollamaUrl = 'http://ai:11434/api/chat';
+  private genAI: GoogleGenerativeAI | null = null; // 🟢 Instance Gemini
   
   private readonly systemPrompt = `Tu es une API de routage strict. Tu DOIS classifier la requête selon l'algorithme ci-dessous.
     Réponds UNIQUEMENT avec un objet JSON.
@@ -37,38 +39,156 @@ export class AiService implements OnModuleInit {
     IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
 
   private aiBotId: number;
+  private geminiBotId: number; // 🟢 ID spécifique au bot Gemini
 
   constructor(
     private readonly httpService: HttpService,
     private readonly chatService: ChatService,
     private readonly prisma: PrismaService,
     private readonly friendsService: FriendsService,
-    @Inject(forwardRef(() => ChatGateway)) // 🟢 Injection avec forwardRef pour éviter les boucles circulaires
+    @Inject(forwardRef(() => ChatGateway))
     private readonly chatGateway: ChatGateway, 
-  ) {}
-
-  async onModuleInit() {
-    await this.ensureAiBotExists();
+  ) {
+    // 🟢 Initialisation sécurisée de Gemini
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      this.genAI = new GoogleGenerativeAI(apiKey);
+    } else {
+      this.logger.warn('⚠️ GEMINI_API_KEY non définie. Gemini ne fonctionnera pas.');
+    }
   }
 
-  private async ensureAiBotExists() {
-    const BOT_USERNAME = 'Bot IA';
+  async onModuleInit() {
+    await this.ensureAiBotsExist();
+  }
+
+  private async ensureAiBotsExist() {
     try {
-      const bot = await this.prisma.user.upsert({
-        where: { username: BOT_USERNAME },
+      // Bot Ollama
+      const ollamaBot = await this.prisma.user.upsert({
+        where: { username: 'Bot IA' },
         update: {},
         create: {
-          username: BOT_USERNAME,
+          username: 'Bot IA',
           email: 'bot-ia@transcendence.internal',
           avatar: '/uploads/avatars/ai-avatar.png',
         },
       });
-      this.aiBotId = bot.id;
+      this.aiBotId = ollamaBot.id;
+
+      // 🟢 Bot Gemini
+      const geminiBot = await this.prisma.user.upsert({
+        where: { username: 'Gemini IA' },
+        update: {},
+        create: {
+          username: 'Gemini IA',
+          email: 'gemini-ia@transcendence.internal',
+          avatar: '/uploads/avatars/gemini-avatar.png',
+        },
+      });
+      this.geminiBotId = geminiBot.id;
+
     } catch (error) {
-      this.logger.error("[IA] Erreur initialisation Bot", error);
+      this.logger.error("[IA] Erreur initialisation des Bots", error);
     }
   }
 
+  // ==========================================
+  // NOUVEAU : LOGIQUE GEMINI
+  // ==========================================
+  async streamGeminiResponse(userMessages: ChatMessageDto[], res: Response, userId: number): Promise<void> {
+    if (!this.genAI) {
+      res.write(`data: ${JSON.stringify({ error: "L'API Gemini n'est pas configurée sur le serveur." })}\n\n`);
+      res.end();
+      return;
+    }
+
+    const lastUserMessage = userMessages[userMessages.length - 1];
+
+    if (!lastUserMessage || !lastUserMessage.content.trim()) {
+      res.write(`data: ${JSON.stringify({ error: "Message vide." })}\n\n`);
+      res.end();
+      return;
+    }
+
+    try {
+      const roomName = `ai-gemini-chat-${userId}`;
+
+      // 1. Récupérer ou créer le salon spécifique Gemini
+      let aiChannel = await this.prisma.channel.findFirst({
+        where: { name: roomName }
+      });
+
+      if (!aiChannel) {
+        aiChannel = await this.prisma.channel.create({
+          data: {
+            name: roomName,
+            type: 'PRIVATE',
+            members: {
+              create: [
+                { userId: userId, role: 'MEMBER' },
+                { userId: this.geminiBotId, role: 'MEMBER' }
+              ]
+            }
+          }
+        });
+      }
+
+      const channelId = aiChannel.id;
+
+      // 2. Sauvegarde du message utilisateur
+      await this.chatService.saveMessage({
+        content: lastUserMessage.content,
+        channelId: channelId,
+        authorId: userId,
+      });
+
+      // 3. Formatage de l'historique pour l'API Gemini
+      const formattedHistory = userMessages.slice(0, -1).map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }],
+      }));
+
+      // 4. Appel à Gemini 1.5 Flash
+      const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const chat = model.startChat({ history: formattedHistory });
+      
+      const resultStream = await chat.sendMessageStream(lastUserMessage.content);
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Utile derrière un proxy (comme Caddy)
+
+      let fullResponse = '';
+
+      // 5. Streaming des chunks
+      for await (const chunk of resultStream) {
+        const chunkText = chunk.text();
+        fullResponse += chunkText;
+        res.write(`data: ${JSON.stringify({ text: chunkText })}\n\n`);
+      }
+
+      // 6. Sauvegarde de la réponse complète du bot Gemini
+      await this.chatService.saveMessage({
+        content: fullResponse,
+        channelId: channelId,
+        authorId: this.geminiBotId,
+      });
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+
+    } catch (error) {
+      this.logger.error('Erreur Stream Gemini:', error);
+      res.write(`data: ${JSON.stringify({ error: "Erreur lors de la génération avec Gemini." })}\n\n`);
+      res.end();
+    }
+  }
+
+  // ==========================================
+  // EXISTANT : LOGIQUE OLLAMA (inchangée)
+  // ==========================================
   async streamResponse(userMessages: ChatMessageDto[], res: Response, userId: number): Promise<void> {
     const lastUserMessage = userMessages[userMessages.length - 1];
 
@@ -81,7 +201,6 @@ export class AiService implements OnModuleInit {
     try {
       const roomName = `ai-chat-${userId}`; 
 
-      // 1. On récupère ou on crée le vrai salon numérique pour l'IA
       let aiChannel = await this.prisma.channel.findFirst({
         where: { name: roomName }
       });
@@ -103,7 +222,6 @@ export class AiService implements OnModuleInit {
 
       const channelId = aiChannel.id;
 
-      // 2. On sauvegarde le message avec channelId
       await this.chatService.saveMessage({
         content: lastUserMessage.content,
         channelId: channelId, 
@@ -180,17 +298,14 @@ export class AiService implements OnModuleInit {
                         const minId = Math.min(userId, targetUser.id);
                         const maxId = Math.max(userId, targetUser.id);
                         
-                        // 3. On récupère le DM numérique
                         const { channel: dmChannel } = await this.chatService.getOrCreateDirectMessage(minId, maxId);
                         
-                        // 🟢 On récupère le message sauvegardé...
                         const savedDirectMessage = await this.chatService.saveMessage({
                           content: aiResult.payload,
                           channelId: dmChannel.id,
                           authorId: userId,
                         });
 
-                        // 🟢 ...Et on réveille les WebSockets du destinataire manuellement !
                         await this.chatGateway.notifyNewMessage(dmChannel.id, userId, savedDirectMessage);
                         break;
                         
@@ -232,7 +347,6 @@ export class AiService implements OnModuleInit {
                     aiResult.reply = logicError.message || "L'action n'a pas pu être effectuée.";
                   }
 
-                  // 4. Sauvegarde de la réponse de l'IA (On n'a pas besoin de notify ici car c'est un salon local avec le Bot)
                   await this.chatService.saveMessage({
                     content: aiResult.reply || "Action effectuée.",
                     channelId: channelId,
@@ -250,7 +364,7 @@ export class AiService implements OnModuleInit {
               res.end();
             }
           } catch (parseError) {
-            // Silencieux pour le stream incomplet
+            // Silencieux
           }
         }
       });
