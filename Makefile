@@ -1,4 +1,21 @@
+# --- DÉTECTION DU MATÉRIEL ---
+HAS_NVIDIA := $(shell command -v nvidia-smi 2> /dev/null)
+HAS_AMD := $(shell [ -e /dev/kfd ] && echo "yes" || echo "no")
+
 COMPOSE := docker compose -f docker-compose.yml
+
+ifneq ($(HAS_NVIDIA),)
+	COMPOSE += -f docker-compose.nvidia.yml
+	GPU_MSG := "🟢 GPU NVIDIA détecté. Configuration ajoutée."
+else
+	ifeq ($(HAS_AMD),yes)
+		COMPOSE += -f docker-compose.amd.yml
+		GPU_MSG := "🔴 GPU AMD détecté. Configuration ajoutée."
+	else
+		GPU_MSG := "⚪ Aucun GPU compatible détecté. Mode CPU."
+	endif
+endif
+# -----------------------------
 
 all: up
 
@@ -15,16 +32,18 @@ help:
 	@echo "  make fclean      - Deep clean: remove containers, images, and ALL data volumes"
 
 up:
+	@echo $(GPU_MSG)
 	$(COMPOSE) up -d --build
 
 build:
+	@echo $(GPU_MSG)
 	$(COMPOSE) build --progress=plain
 
 down:
 	$(COMPOSE) down
 
 down-v:
-	make f
+	make fclean
 
 re: down up
 
