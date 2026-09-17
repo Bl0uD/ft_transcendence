@@ -124,41 +124,42 @@ export const SocialView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6 text-white">Gestion Sociale</h1>
+    <div className="signal-page min-h-screen">
+      <div className="max-w-4xl mx-auto p-6 md:p-10">
+      <h1 className="font-display text-4xl font-extrabold tracking-tight mb-8 text-ink">Gestion sociale</h1>
 
       {/* Formulaire d'ajout par Pseudo */}
-      <form onSubmit={handleSendRequest} className="mb-6 flex gap-2">
+      <form onSubmit={handleSendRequest} className="signal-panel mb-6 p-4 flex gap-2">
         <input
           type="text"
           placeholder="Nom d'utilisateur (ex: Marvin)..."
           value={targetUsername}
           onChange={(e) => setTargetUsername(e.target.value)}
-          className="p-2 border border-gray-700 rounded bg-gray-800 text-white flex-1 focus:outline-none focus:border-blue-500"
+          className="signal-input p-3 flex-1"
         />
-        <button type="submit" className="bg-blue-600 px-4 py-2 text-white rounded hover:bg-blue-700 transition">
+        <button type="submit" className="signal-button px-4 py-2">
           Ajouter
         </button>
       </form>
-      {error && <p className="text-red-400 mb-4">{error}</p>}
+      {error && <p className="text-coral mb-4">{error}</p>}
 
       {/* Onglets */}
-      <div className="flex border-b border-gray-700 mb-4">
+      <div className="flex border-b border-line mb-4">
         <button
           onClick={() => setActiveTab('friends')}
-          className={`px-4 py-2 text-white border-b-2 ${activeTab === 'friends' ? 'border-blue-500 font-bold' : 'border-transparent'}`}
+          className={`px-4 py-2 text-ink border-b-2 ${activeTab === 'friends' ? 'border-electric font-bold' : 'border-transparent'}`}
         >
           Amis ({friends.length})
         </button>
         <button
           onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 text-white border-b-2 ${activeTab === 'pending' ? 'border-blue-500 font-bold' : 'border-transparent'}`}
+          className={`px-4 py-2 text-ink border-b-2 ${activeTab === 'pending' ? 'border-electric font-bold' : 'border-transparent'}`}
         >
           En attente ({pendingRequests.length})
         </button>
         <button
           onClick={() => setActiveTab('blocked')}
-          className={`px-4 py-2 text-white border-b-2 ${activeTab === 'blocked' ? 'border-blue-500 font-bold' : 'border-transparent'}`}
+          className={`px-4 py-2 text-ink border-b-2 ${activeTab === 'blocked' ? 'border-electric font-bold' : 'border-transparent'}`}
         >
           Bloqués ({blockedUsers.length})
         </button>
@@ -167,15 +168,15 @@ export const SocialView: React.FC = () => {
       {/* Onglet Amis */}
       {activeTab === 'friends' && (
         <div className="space-y-2">
-          {friends.length === 0 ? <p className="text-gray-400">Aucun ami pour le moment.</p> : (
+          {friends.length === 0 ? <p className="text-ink-soft">Aucun ami pour le moment.</p> : (
             friends.map((friend) => (
-              <div key={friend.id} className="flex justify-between items-center p-3 bg-gray-800 rounded">
-                <span className="text-white">{friend.username}</span>
+              <div key={friend.id} className="signal-panel flex justify-between items-center p-4 mb-2">
+                <span className="text-ink font-semibold">{friend.username}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => handleBlockUser(friend.id)} className="px-3 py-1 bg-yellow-600 text-white rounded text-sm">
+                  <button onClick={() => handleBlockUser(friend.id)} className="px-3 py-1 bg-acid text-ink rounded-control text-sm font-semibold">
                     Bloquer
                   </button>
-                  <button onClick={() => handleRemoveOrUnblock(friend.id, false)} className="px-3 py-1 bg-red-600 text-white rounded text-sm">
+                  <button onClick={() => handleRemoveOrUnblock(friend.id, false)} className="px-3 py-1 bg-coral text-white rounded-control text-sm font-semibold">
                     Retirer
                   </button>
                 </div>
@@ -188,12 +189,12 @@ export const SocialView: React.FC = () => {
       {/* Onglet En Attente */}
       {activeTab === 'pending' && (
         <div className="space-y-2">
-          {pendingRequests.length === 0 ? <p className="text-gray-400">Aucune demande en attente.</p> : (
+          {pendingRequests.length === 0 ? <p className="text-ink-soft">Aucune demande en attente.</p> : (
             pendingRequests.map((req) => (
-              <div key={req.id} className="flex justify-between items-center p-3 bg-gray-800 rounded">
-                <span className="text-white">{req.requester.username} vous a envoyé une demande.</span>
+              <div key={req.id} className="signal-panel flex justify-between items-center p-4 mb-2">
+                <span className="text-ink font-semibold">{req.requester.username} vous a envoyé une demande.</span>
                 <div className="flex gap-2">
-                  <button onClick={() => handleAcceptRequest(req.id)} className="px-3 py-1 bg-green-600 text-white rounded text-sm">
+                  <button onClick={() => handleAcceptRequest(req.id)} className="signal-button px-3 py-1 text-sm">
                     Accepter
                   </button>
                 </div>
@@ -206,11 +207,11 @@ export const SocialView: React.FC = () => {
       {/* Onglet Bloqués */}
       {activeTab === 'blocked' && (
         <div className="space-y-2">
-          {blockedUsers.length === 0 ? <p className="text-gray-400">Aucun utilisateur bloqué.</p> : (
+          {blockedUsers.length === 0 ? <p className="text-ink-soft">Aucun utilisateur bloqué.</p> : (
             blockedUsers.map((user) => (
-              <div key={user.id} className="flex justify-between items-center p-3 bg-gray-800 rounded">
-                <span className="text-white">{user.username}</span>
-                <button onClick={() => handleRemoveOrUnblock(user.id, true)} className="px-3 py-1 bg-gray-600 text-white rounded text-sm">
+              <div key={user.id} className="signal-panel flex justify-between items-center p-4 mb-2">
+                <span className="text-ink font-semibold">{user.username}</span>
+                <button onClick={() => handleRemoveOrUnblock(user.id, true)} className="px-3 py-1 bg-ink text-white rounded-control text-sm">
                   Débloquer
                 </button>
               </div>
@@ -218,6 +219,7 @@ export const SocialView: React.FC = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };
