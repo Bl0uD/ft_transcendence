@@ -1,1 +1,105 @@
 @import "tailwindcss";
+
+@theme {
+  --color-paper: #f3f5f0;
+  --color-paper-muted: #e8ece8;
+  --color-ink: #101827;
+  --color-ink-soft: #5f6b7d;
+  --color-line: #d9deea;
+  --color-electric: #3157ff;
+  --color-electric-dark: #2445d6;
+  --color-acid: #c9ff3d;
+  --color-coral: #ff715b;
+  --font-display: "Syne", "Arial Black", sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 1.25rem;
+  --radius-control: 0.8rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-family: var(--font-sans);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  html,
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--color-paper);
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 85% 5%, rgb(49 87 255 / 0.08), transparent 24rem),
+      var(--color-paper);
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-electric);
+    outline-offset: 3px;
+  }
+}
+
+/* Shared visual language for the existing pages. */
+.signal-page {
+  min-height: 100vh;
+  color: var(--color-ink);
+  background: var(--color-paper);
+}
+
+.signal-panel {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 28px rgb(16 24 39 / 0.06);
+}
+
+.signal-input {
+  color: var(--color-ink);
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+}
+
+.signal-input:focus {
+  border-color: var(--color-electric);
+  outline: 0;
+  box-shadow: 0 0 0 4px rgb(49 87 255 / 0.12);
+}
+
+.signal-button {
+  color: #fff;
+  font-weight: 750;
+  background: var(--color-electric);
+  border-radius: var(--radius-control);
+  transition: transform 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.signal-button:hover {
+  background: var(--color-electric-dark);
+  box-shadow: 0 8px 18px rgb(49 87 255 / 0.2);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
