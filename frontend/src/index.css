@@ -1,1 +1,95 @@
 @import "tailwindcss";
+
+@theme {
+  --color-bg: var(--theme-bg);
+  --color-surface: var(--theme-surface);
+  --color-surface-hover: var(--theme-surface-hover);
+  --color-border: var(--theme-border);
+  --color-border-subtle: var(--theme-border-subtle);
+  --color-text-main: var(--theme-text-main);
+  --color-text-muted: var(--theme-text-muted);
+  --color-primary: var(--theme-primary);
+  --color-primary-hover: var(--theme-primary-hover);
+  --color-primary-content: var(--theme-primary-content);
+  --color-secondary: var(--theme-secondary);
+}
+
+:root {
+  /* Default Theme (Theme 0) - Slate / Classic */
+  --color-a: #f8fafc; /* Light */
+  --color-b: #020617; /* Dark */
+
+  /* Map base colors based on mode. Default is Dark. */
+  --theme-base-bg: var(--color-b);
+  --theme-base-fg: var(--color-a);
+
+  /* Automatic derivation of the entire UI palette using color-mix */
+  --theme-bg: var(--theme-base-bg);
+  --theme-surface: color-mix(in srgb, var(--theme-base-bg) 95%, var(--theme-base-fg));
+  --theme-surface-hover: color-mix(in srgb, var(--theme-base-bg) 88%, var(--theme-base-fg));
+  --theme-border: color-mix(in srgb, var(--theme-base-bg) 75%, var(--theme-base-fg));
+  --theme-border-subtle: color-mix(in srgb, var(--theme-base-bg) 90%, var(--theme-base-fg));
+  
+  --theme-text-main: var(--theme-base-fg);
+  --theme-text-muted: color-mix(in srgb, var(--theme-base-fg) 65%, var(--theme-base-bg));
+  
+  --theme-primary: var(--theme-base-fg);
+  --theme-primary-hover: color-mix(in srgb, var(--theme-base-fg) 85%, var(--theme-base-bg));
+  --theme-primary-content: var(--theme-base-bg);
+  
+  --theme-secondary: color-mix(in srgb, var(--theme-base-fg) 80%, var(--theme-base-bg));
+}
+
+[data-theme="light"] {
+  --theme-base-bg: var(--color-a);
+  --theme-base-fg: var(--color-b);
+}
+
+/* Custom Themes Definitions (Color A = Light, Color B = Dark) */
+[data-color="theme1"] {
+  --color-a: #F8F7F4; /* Porcelain */
+  --color-b: #0057FF; /* Signal Blue */
+}
+
+[data-color="theme2"] {
+  --color-a: #FFF275; /* Butter Yellow */
+  --color-b: #3A0CA3; /* Royal Iris */
+}
+
+[data-color="theme3"] {
+  --color-a: #B6FF2E; /* Lime Spark */
+  --color-b: #23262F; /* Graphite */
+}
+
+[data-color="theme4"] {
+  --color-a: #FF4696; /* Dragonfruit */
+  --color-b: #1E1033; /* Night Violet */
+}
+
+[data-color="theme5"] {
+  --color-a: #F8E7C9; /* Champagne */
+  --color-b: #064E3B; /* Emerald Ink */
+}
+
+[data-color="theme6"] {
+  --color-a: #FFD6A5; /* Soft Apricot */
+  --color-b: #6A00F4; /* Ultra Violet */
+}
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  -webkit-text-size-adjust: 100%;
+  background-color: var(--theme-bg);
+  color: var(--theme-text-main);
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}

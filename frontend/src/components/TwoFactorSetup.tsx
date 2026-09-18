@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import api from '../api/axios';
-import { useAuthStore } from '../store/authStore';
 
 export default function TwoFactorSetup() {
   const [step, setStep] = useState<'idle' | 'setup'>('idle');
@@ -29,7 +27,7 @@ const handleGenerate = async () => {
     try {
       setError('');
       
-      const response = await api.post('/auth/2fa/turn-on', { 
+      await api.post('/auth/2fa/turn-on', { 
         twoFactorCode: code 
       });
       
@@ -42,20 +40,20 @@ const handleGenerate = async () => {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mt-6">
-      <h3 className="text-lg font-bold text-white mb-2">Sécurité (2FA)</h3>
+    <div className="bg-surface border border-border rounded-xl p-6 mt-6">
+      <h3 className="text-lg font-bold text-text-main mb-2">Sécurité (2FA)</h3>
       
       {success && <p className="text-green-400 text-sm mb-4">{success}</p>}
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
       {step === 'idle' && (
         <div>
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-text-muted text-sm mb-4">
             Protégez votre compte en activant l'authentification à double facteur.
           </p>
           <button 
             onClick={handleGenerate}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+            className="bg-primary hover:bg-primary-hover text-primary-content px-4 py-2 rounded-lg text-sm transition-colors"
           >
             Configurer la 2FA
           </button>
@@ -64,7 +62,7 @@ const handleGenerate = async () => {
 
       {step === 'setup' && (
         <div className="flex flex-col items-center">
-          <p className="text-slate-300 text-sm mb-4 text-center">
+          <p className="text-text-muted text-sm mb-4 text-center">
             1. Scannez ce QR Code avec une application comme Google Authenticator.
           </p>
           
@@ -77,7 +75,7 @@ const handleGenerate = async () => {
           </div>
 
           <form onSubmit={handleEnable} className="w-full max-w-xs flex flex-col gap-3">
-            <p className="text-slate-300 text-sm text-center">
+            <p className="text-text-muted text-sm text-center">
               2. Entrez le code généré pour confirmer :
             </p>
             <input
@@ -86,20 +84,20 @@ const handleGenerate = async () => {
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               placeholder="000000"
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-white text-center tracking-widest font-mono focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-border bg-surface-hover px-4 py-2 text-text-main text-center tracking-widest font-mono focus:border-primary focus:outline-none"
             />
             <div className="flex gap-2">
               <button 
                 type="submit"
                 disabled={code.length !== 6}
-                className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                className="flex-1 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-text-main px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 Activer
               </button>
               <button 
                 type="button"
                 onClick={() => setStep('idle')}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                className="flex-1 bg-border hover:bg-border-subtle text-text-main px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 Annuler
               </button>

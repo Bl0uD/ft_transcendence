@@ -20,6 +20,10 @@ interface SocialState {
   pendingRequests: FriendRequest[];
   blockedUsers: User[];
   friendsStatus: Record<number, 'ONLINE' | 'OFFLINE'>; 
+  isSocialDrawerOpen: boolean;
+  setIsSocialDrawerOpen: (open: boolean) => void;
+  isDesktopSidebarOpen: boolean;
+  setIsDesktopSidebarOpen: (open: boolean) => void;
   
   fetchFriends: () => Promise<void>;
   fetchPendingRequests: () => Promise<void>;
@@ -41,6 +45,13 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   pendingRequests: [],
   blockedUsers: [],
   friendsStatus: {}, 
+  isSocialDrawerOpen: false,
+  setIsSocialDrawerOpen: (open) => set({ isSocialDrawerOpen: open }),
+  isDesktopSidebarOpen: localStorage.getItem('desktop_sidebar') !== 'false',
+  setIsDesktopSidebarOpen: (open) => {
+    localStorage.setItem('desktop_sidebar', String(open));
+    set({ isDesktopSidebarOpen: open });
+  },
 
   fetchFriends: async () => {
     try {

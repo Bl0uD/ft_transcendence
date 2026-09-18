@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore'; 
-import { useSocialStore } from '../store/socialStore'; 
+import { useSocialStore } from '../store/socialStore';
+import { useThemeStore } from '../store/themeStore'; 
 import UserAvatar from '../components/UserAvatar';
 import TwoFactorSetup from '../components/TwoFactorSetup';
 import SocialSidebar from '../components/SocialSidebar'; 
@@ -24,6 +25,7 @@ const getDisplayName = (account?: { username?: string; nickname?: string | null 
 };
 
 export default function PublicProfile() {
+  const { colorTheme, setColorTheme } = useThemeStore();
   const { username } = useParams();
   const navigate = useNavigate();
   
@@ -31,7 +33,7 @@ export default function PublicProfile() {
   const updateUser = useAuthStore((state: any) => state.updateUser);
   const { setIsChatOpen, setActiveRoom } = useChatStore(); 
   
-  const { fetchAllSocialData, friends, blockedUsers, removeFriend, blockUser, unblockUser, sendRequest } = useSocialStore(); 
+  const { fetchAllSocialData, friends, blockedUsers, removeFriend, blockUser, unblockUser, sendRequest, isDesktopSidebarOpen } = useSocialStore(); 
   
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -192,18 +194,18 @@ export default function PublicProfile() {
     } catch (err) {}
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Chargement...</div>;
+  if (loading) return <div className="min-h-screen bg-bg flex items-center justify-center text-text-main">Chargement...</div>;
   
   if (error) return (
-    <div className="flex h-screen bg-slate-950 text-white overflow-hidden relative">
+    <div className="flex h-dvh bg-bg text-text-main overflow-hidden relative w-full max-w-full">
       <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <TopNavBar onLoginClick={() => setShowAuthModal(true)} />
-      <div className="flex w-full pt-16 h-full">
+      <div className="flex w-full max-w-full pt-16 h-full overflow-hidden">
         {currentUser && <SocialSidebar />}
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="text-center p-10 bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed">
-            <span className="text-5xl mb-3 block opacity-50">👻</span>
-            <p className="text-slate-400 font-semibold">{error}</p>
+        <main className="flex-1 min-w-0 flex items-center justify-center p-4 sm:p-6">
+          <div className="text-center p-6 sm:p-10 bg-surface/50 rounded-2xl border border-border border-dashed max-w-sm">
+            <span className="text-4xl sm:text-5xl mb-3 block opacity-50">👻</span>
+            <p className="text-text-muted text-sm sm:text-base font-semibold">{error}</p>
           </div>
         </main>
       </div>
@@ -211,44 +213,67 @@ export default function PublicProfile() {
   );
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white overflow-hidden relative">
+    <div className="flex h-dvh bg-bg text-text-main overflow-hidden relative w-full max-w-full">
 
       {/* 🟢 INTÉGRATION DE LA MODALE */}
       <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
-      {/* MODALE PARAMÈTRES (inchangée) */}
+      {/* MODALE PARAMÈTRES */}
       {showSettingsModal && isMyProfile && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 p-8 rounded-3xl shadow-2xl">
-            <button onClick={() => setShowSettingsModal(false)} className="absolute top-4 right-5 text-slate-400 hover:text-white transition-colors text-xl">✕</button>
-            <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Paramètres du Profil</h2>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/70 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-surface border border-border p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl custom-scrollbar">
+            <button onClick={() => setShowSettingsModal(false)} className="absolute top-4 right-5 text-text-muted hover:text-text-main transition-colors text-xl">✕</button>
+            <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Paramètres du Profil</h2>
             {settingStatus.message && (
-              <div className={`p-3 mb-4 rounded-xl text-sm border ${settingStatus.type === 'error' ? 'bg-red-900/20 text-red-400 border-red-500/30' : 'bg-emerald-900/20 text-emerald-400 border-emerald-500/30'}`}>
+              <div className={`p-3 mb-4 rounded-xl text-xs sm:text-sm border font-medium transition-all ${settingStatus.type === 'error' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-primary/15 text-primary border-primary/40'}`}>
                 {settingStatus.message}
               </div>
             )}
-            <form onSubmit={handleSettingsSubmit} className="space-y-5">
+            <form onSubmit={handleSettingsSubmit} className="space-y-4 sm:space-y-5">
               <div className="flex flex-col items-center">
-                <div className="relative w-28 h-28 mb-2 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  <UserAvatar avatarUrl={previewUrl} username={settingUsername} className="w-full h-full text-4xl shadow-md transition group-hover:opacity-75" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/50 rounded-full"><span className="text-white text-xs px-2 py-1 bg-black/80 rounded">Modifier</span></div>
+                <div className="relative w-24 h-24 sm:w-28 sm:h-28 mb-2 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                  <UserAvatar avatarUrl={previewUrl} username={settingUsername} className="w-full h-full text-3xl sm:text-4xl shadow-md transition group-hover:opacity-75" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/50 rounded-full"><span className="text-text-main text-xs px-2 py-1 bg-black/80 rounded">Modifier</span></div>
                 </div>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/jpeg, image/png, image/webp" className="hidden" />
-                <p className="text-xs text-slate-500">JPG, PNG, WEBP (Max: 2MB)</p>
+                <p className="text-xs text-text-muted">JPG, PNG, WEBP (Max: 2MB)</p>
               </div>
-              <div><label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Nom d'utilisateur</label><input type="text" value={settingUsername} onChange={(e) => setSettingUsername(e.target.value)} required minLength={3} maxLength={20} className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-slate-200 focus:border-indigo-500 focus:outline-none" /></div>
-              <div><label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Surnom (Optionnel)</label><input type="text" value={settingNickname} onChange={(e) => setSettingNickname(e.target.value)} maxLength={20} className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-slate-200 focus:border-indigo-500 focus:outline-none" /></div>
-              <div><label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Email</label><input type="email" value={settingEmail} onChange={(e) => setSettingEmail(e.target.value)} required className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-slate-200 focus:border-indigo-500 focus:outline-none" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nom d'utilisateur</label><input type="text" value={settingUsername} onChange={(e) => setSettingUsername(e.target.value)} required minLength={3} maxLength={20} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Surnom (Optionnel)</label><input type="text" value={settingNickname} onChange={(e) => setSettingNickname(e.target.value)} maxLength={20} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Email</label><input type="email" value={settingEmail} onChange={(e) => setSettingEmail(e.target.value)} required className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Nouveau mot de passe (laisser vide sinon)</label>
+                <label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nouveau mot de passe (laisser vide sinon)</label>
                 <div className="relative flex items-center">
-                  <input type={showPassword ? 'text' : 'password'} value={settingPassword} onChange={(e) => setSettingPassword(e.target.value)} placeholder="••••••••" minLength={3} maxLength={20} className="w-full pr-10 rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2 text-slate-200 focus:border-indigo-500 focus:outline-none" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-slate-500 hover:text-slate-300">{showPassword ? "🙈" : "👁️"}</button>
+                  <input type={showPassword ? 'text' : 'password'} value={settingPassword} onChange={(e) => setSettingPassword(e.target.value)} placeholder="••••••••" minLength={3} maxLength={20} className="w-full pr-10 rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-text-muted hover:text-text-muted">{showPassword ? "🙈" : "👁️"}</button>
                 </div>
               </div>
-              <button type="submit" disabled={settingStatus.type === 'loading'} className="w-full bg-indigo-600 text-white font-semibold py-2.5 px-4 rounded-xl hover:bg-indigo-500 transition disabled:opacity-50 mt-2">{settingStatus.type === 'loading' ? 'Enregistrement...' : 'Enregistrer'}</button>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-text-muted mb-2">Thème de couleur</label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { id: 'theme0', a: '#f8fafc', b: '#020617', name: 'Classique' },
+                    { id: 'theme1', a: '#F8F7F4', b: '#0057FF', name: 'Signal Blue' },
+                    { id: 'theme2', a: '#FFF275', b: '#3A0CA3', name: 'Butter Yellow' },
+                    { id: 'theme3', a: '#B6FF2E', b: '#23262F', name: 'Lime Spark' },
+                    { id: 'theme4', a: '#FF4696', b: '#1E1033', name: 'Dragonfruit' },
+                    { id: 'theme5', a: '#F8E7C9', b: '#064E3B', name: 'Emerald Ink' },
+                    { id: 'theme6', a: '#FFD6A5', b: '#6A00F4', name: 'Ultra Violet' }
+                  ].map((t) => (
+                    <button 
+                      key={t.id} 
+                      type="button" 
+                      title={t.name}
+                      onClick={() => setColorTheme(t.id)} 
+                      className={`w-8 h-8 rounded-full border-2 transition-transform ${colorTheme === t.id ? 'border-text-main scale-110 shadow-md' : 'border-transparent hover:scale-110'}`} 
+                      style={{ background: `linear-gradient(135deg, ${t.a} 50%, ${t.b} 50%)` }} 
+                    />
+                  ))}
+                </div>
+              </div>
+              <button type="submit" disabled={settingStatus.type === 'loading'} className="w-full bg-primary text-primary-content font-semibold py-2.5 px-4 rounded-xl hover:bg-primary-hover transition disabled:opacity-50 mt-2 text-sm">{settingStatus.type === 'loading' ? 'Enregistrement...' : 'Enregistrer'}</button>
             </form>
-            <div className="mt-6 pt-6 border-t border-slate-800"><TwoFactorSetup /></div>
+            <div className="mt-6 pt-6 border-t border-border"><TwoFactorSetup /></div>
           </div>
         </div>
       )}
@@ -257,54 +282,54 @@ export default function PublicProfile() {
       <TopNavBar onLoginClick={() => setShowAuthModal(true)} />
 
       {/* STRUCTURE DE LA PAGE : SIDEBAR + CONTENU */}
-      <div className="flex w-full pt-16 h-full">
+      <div className="flex w-full max-w-full pt-16 h-full overflow-hidden">
         {currentUser && <SocialSidebar />}
 
-        <main className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar">
-          <div className="max-w-3xl mx-auto flex flex-col gap-8 pb-20">
+        <main className={`flex-1 min-w-0 overflow-y-auto p-3 sm:p-6 scroll-smooth custom-scrollbar w-full max-w-full transition-all ${currentUser && !isDesktopSidebarOpen ? 'lg:pl-20' : ''}`}>
+          <div className="max-w-3xl mx-auto flex flex-col gap-6 sm:gap-8 pb-20 w-full min-w-0">
             
-            <div className="bg-slate-900 rounded-2xl p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 border border-slate-800 shadow-lg mt-4">
-              <UserAvatar avatarUrl={profileData?.avatar} username={getDisplayName(profileData)} className="w-32 h-32 text-5xl border-4 border-slate-800 shadow-xl" />
-              <div className="flex-1 text-center sm:text-left">
-                <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-white">{getDisplayName(profileData)}</h1>
-                <p className="text-lg text-indigo-400 font-medium">@{profileData?.username}</p>
-                {profileData?.createdAt && <p className="text-sm mt-3 text-slate-400">Rejoint le {new Date(profileData.createdAt).toLocaleDateString()}</p>}
+            <div className="bg-surface rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 border border-border shadow-lg mt-2 sm:mt-4">
+              <UserAvatar avatarUrl={profileData?.avatar} username={getDisplayName(profileData)} className="w-24 h-24 sm:w-32 sm:h-32 text-4xl sm:text-5xl border-4 border-border shadow-xl shrink-0" />
+              <div className="flex-1 text-center sm:text-left min-w-0">
+                <h1 className="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-white break-words">{getDisplayName(profileData)}</h1>
+                <p className="text-base sm:text-lg text-primary font-medium truncate">@{profileData?.username}</p>
+                {profileData?.createdAt && <p className="text-xs sm:text-sm mt-2 sm:mt-3 text-text-muted">Rejoint le {new Date(profileData.createdAt).toLocaleDateString()}</p>}
               </div>
               
-              <div className="flex flex-wrap justify-center sm:justify-start gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3 w-full sm:w-auto mt-3 sm:mt-0">
                 {/* 🟢 GESTION DES BOUTONS SELON LE STATUT */}
                 {!currentUser ? (
                   <>
-                    <button onClick={() => setShowAuthModal(true)} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                    <button onClick={() => setShowAuthModal(true)} className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-content hover:bg-primary-hover rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2">
                       💬 Message
                     </button>
-                    <button onClick={() => setShowAuthModal(true)} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
+                    <button onClick={() => setShowAuthModal(true)} className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-surface hover:bg-surface-hover text-text-main border border-border rounded-xl text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2">
                       ➕ Ajouter
                     </button>
                   </>
                 ) : isMyProfile ? (
-                  <button onClick={() => setShowSettingsModal(true)} className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 rounded-xl font-medium transition-colors border border-slate-700 flex items-center justify-center gap-2">
+                  <button onClick={() => setShowSettingsModal(true)} className="px-5 sm:px-6 py-2 sm:py-2.5 bg-surface-hover hover:bg-border rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
                     ⚙️ Paramètres
                   </button>
                 ) : isBlocked ? (
-                  <button onClick={() => unblockUser(profileData.id)} className="px-6 py-2.5 bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-400 text-slate-300 rounded-xl font-medium transition-colors border border-slate-700 flex items-center justify-center gap-2">
+                  <button onClick={() => unblockUser(profileData.id)} className="px-5 sm:px-6 py-2 sm:py-2.5 bg-surface-hover hover:bg-emerald-500/20 hover:text-emerald-400 text-text-muted rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
                     🔓 Débloquer
                   </button>
                 ) : (
                   <>
-                    <button onClick={handleSendMessage} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl font-medium transition-colors shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+                    <button onClick={handleSendMessage} className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-content hover:bg-primary-hover rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2">
                       💬 Message
                     </button>
                     {isFriend ? (
-                      <button onClick={() => removeFriend(profileData.id)} className="px-4 py-2.5 bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-300 rounded-xl font-medium transition-colors border border-slate-700 flex items-center justify-center gap-2">
+                      <button onClick={() => removeFriend(profileData.id)} className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-surface-hover hover:bg-red-500/20 hover:text-red-400 text-text-muted rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
                         Retirer
                       </button>
                     ) : (
-                      <button onClick={async () => { try { await sendRequest(profileData.username); alert("Demande d'ami envoyée !"); } catch (e: any) { alert(e.response?.data?.message || "Erreur."); } }} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
+                      <button onClick={async () => { try { await sendRequest(profileData.username); alert("Demande d'ami envoyée !"); } catch (e: any) { alert(e.response?.data?.message || "Erreur."); } }} className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-surface hover:bg-surface-hover text-text-main border border-border rounded-xl text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2">
                         ➕ Ajouter
                       </button>
                     )}
-                    <button onClick={() => blockUser(profileData.id)} className="px-4 py-2.5 bg-slate-800 hover:bg-yellow-500/20 hover:text-yellow-500 text-slate-300 rounded-xl font-medium transition-colors border border-slate-700 flex items-center justify-center gap-2">
+                    <button onClick={() => blockUser(profileData.id)} className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-surface-hover hover:bg-yellow-500/20 hover:text-yellow-500 text-text-muted rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
                       Bloquer
                     </button>
                   </>
@@ -313,76 +338,84 @@ export default function PublicProfile() {
             </div>
 
             {/* MUR DE POSTS */}
-            <div className="flex flex-col gap-6">
-              <h2 className="text-xl font-bold text-slate-200 border-b border-slate-800 pb-2">
+            <div className="flex flex-col gap-4 sm:gap-6">
+              <h2 className="text-lg sm:text-xl font-bold text-text-main border-b border-border pb-2">
                 Publications de {getDisplayName(profileData)}
               </h2>
 
               {isBlocked ? (
-                <div className="text-center p-10 bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed">
-                  <span className="text-5xl mb-3 block opacity-50">🚫</span>
-                  <p className="text-slate-500">Vous avez bloqué cet utilisateur.</p>
+                <div className="text-center p-8 sm:p-10 bg-surface/50 rounded-2xl border border-border border-dashed">
+                  <span className="text-4xl sm:text-5xl mb-3 block opacity-50">🚫</span>
+                  <p className="text-text-muted text-sm">Vous avez bloqué cet utilisateur.</p>
                 </div>
               ) : posts.length === 0 ? (
-                <div className="text-center p-10 bg-slate-900/50 rounded-2xl border border-slate-800 border-dashed">
-                  <span className="text-5xl mb-3 block opacity-50">🏜️</span>
-                  <p className="text-slate-500">Aucune publication à afficher.</p>
+                <div className="text-center p-8 sm:p-10 bg-surface/50 rounded-2xl border border-border border-dashed">
+                  <span className="text-4xl sm:text-5xl mb-3 block opacity-50">🏜️</span>
+                  <p className="text-text-muted text-sm">Aucune publication à afficher.</p>
                 </div>
               ) : (
                 posts.map((post) => (
-                  <div key={post.id} className="w-full bg-slate-900 rounded-2xl border border-slate-800 shadow-sm flex flex-col">
-                    <div className="p-5 flex items-center gap-4">
-                      <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-12 h-12 border border-slate-700" onClick={() => navigate(`/${post.author.username}`)} />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white cursor-pointer hover:underline" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
-                          <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{post.isPublic ? '🌐 Public' : '👥 Amis'}</span>
+                  <div key={post.id} className="w-full bg-surface rounded-2xl border border-border shadow-sm flex flex-col">
+                    <div className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+                      <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-10 h-10 sm:w-12 sm:h-12 border border-border shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
+                          <span className="text-[10px] uppercase font-bold text-text-muted bg-surface-hover px-2 py-0.5 rounded-md border border-border">{post.isPublic ? '🌐 Public' : '👥 Amis'}</span>
                         </div>
-                        <span className="text-xs text-slate-500">{new Date(post.createdAt).toLocaleString()}</span>
+                        <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                       </div>
                     </div>
 
-                    {post.content && <div className="px-5 pb-4 text-slate-200 whitespace-pre-wrap leading-relaxed">{post.content}</div>}
+                    {post.content && <div className="px-3 sm:px-5 pb-3 sm:pb-4 text-text-main whitespace-pre-wrap leading-relaxed text-xs sm:text-sm break-words">{post.content}</div>}
                     
                     {post.imageUrl && (
-                      <div className="w-full bg-slate-950 border-y border-slate-800 flex justify-center max-h-[500px]">
-                        <img src={`/api${post.imageUrl}`} alt="Contenu" className="object-contain w-full h-full" />
+                      <div className="w-full bg-surface/40 border-y border-border overflow-hidden flex items-center justify-center max-h-[550px]">
+                        <img 
+                          src={`/api${post.imageUrl}`} 
+                          alt="Contenu du post" 
+                          className="w-auto h-auto max-w-full max-h-[550px] object-contain mx-auto" 
+                          loading="lazy"
+                        />
                       </div>
                     )}
                     
-                    <div className="px-5 py-3 flex gap-8 border-t border-slate-800/50 bg-slate-900/50">
-                      <button onClick={() => currentUser ? toggleLike(post.id) : setShowAuthModal(true)} className={`flex items-center gap-2 text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-slate-400 hover:text-slate-300'}`}>
+                    <div className="px-3 sm:px-5 py-2.5 sm:py-3 flex gap-4 sm:gap-8 border-t border-border/50 bg-surface/50">
+                      <button onClick={() => currentUser ? toggleLike(post.id) : setShowAuthModal(true)} className={`flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-text-muted hover:text-text-muted'}`}>
                         {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
                       </button>
-                      <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-slate-300 transition-colors">
+                      <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-text-muted hover:text-text-muted transition-colors">
                         💬 {post._count.comments} Réponses
                       </button>
                     </div>
 
                     {openComments[post.id] && (
-                      <div className="bg-slate-950 p-5 border-t border-slate-800 rounded-b-2xl">
-                        <div className="space-y-4 mb-5 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="bg-bg p-3 sm:p-5 border-t border-border rounded-b-2xl">
+                        <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-5 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                           {post.comments.length === 0 ? (
-                            <p className="text-slate-600 text-sm text-center italic">Aucune réponse pour le moment.</p>
+                            <p className="text-slate-600 text-xs sm:text-sm text-center italic py-2">Aucune réponse pour le moment.</p>
                           ) : (
                             post.comments.map(c => (
-                              <div key={c.id} className="flex gap-3 text-sm">
-                                <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-7 h-7 text-xs border border-slate-800" onClick={() => navigate(`/${c.user.username}`)} />
-                                <div className="bg-slate-900 px-4 py-2.5 rounded-2xl rounded-tl-none border border-slate-800">
-                                  <span className="font-bold text-indigo-300 mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/${c.user.username}`)}>{getDisplayName(c.user)}</span>
-                                  <span className="text-slate-300">{c.content}</span>
+                              <div key={c.id} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
+                                <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 sm:w-7 sm:h-7 text-xs border border-border shrink-0" onClick={() => navigate(`/${c.user.username}`)} />
+                                <div className="bg-surface px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl rounded-tl-none border border-border min-w-0 max-w-full">
+                                  <span className="font-bold text-primary mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/${c.user.username}`)}>{getDisplayName(c.user)}</span>
+                                  <span className="text-text-muted break-words">{c.content}</span>
                                 </div>
                               </div>
                             ))
                           )}
                         </div>
                         {currentUser ? (
-                          <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-3 items-center">
-                            <UserAvatar avatarUrl={currentUser.avatar} username={getDisplayName(currentUser)} className="w-8 h-8 text-sm" />
-                            <input type="text" placeholder="Répondre..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-slate-900 border border-slate-700 rounded-full px-5 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors" />
+                          <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2 sm:gap-3 items-center">
+                            <UserAvatar avatarUrl={currentUser.avatar} username={getDisplayName(currentUser)} className="w-7 h-7 sm:w-8 sm:h-8 text-xs shrink-0" />
+                            <input type="text" placeholder="Répondre..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-surface border border-border rounded-full px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm text-text-main focus:outline-none focus:border-primary transition-colors" />
+                            <button type="submit" disabled={!commentInputs[post.id]?.trim()} className="bg-primary text-primary-content w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-primary-hover text-xs">
+                              ➤
+                            </button>
                           </form>
                         ) : (
-                          <div className="text-center p-2"><button type="button" onClick={() => setShowAuthModal(true)} className="text-sm text-indigo-400 hover:underline">Se connecter pour commenter</button></div>
+                          <div className="text-center p-2"><button type="button" onClick={() => setShowAuthModal(true)} className="text-xs sm:text-sm text-primary hover:underline">Se connecter pour commenter</button></div>
                         )}
                       </div>
                     )}

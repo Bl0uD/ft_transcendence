@@ -45,7 +45,11 @@ export const GlobalChatWidget: React.FC = () => {
   // 🟢 NOUVEAU : État du Toggle (Local Ollama vs Gemini)
   const [aiProvider, setAiProvider] = useState<'ollama' | 'gemini'>('ollama');
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // 🟢 État agrandi pour desktop / ordinateur
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // 🟢 Ref pour scroller le conteneur interne sans déplacer la fenêtre/page
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const fetchRooms = async () => {
     try {
@@ -128,7 +132,12 @@ export const GlobalChatWidget: React.FC = () => {
     return () => { socket.off('load_history', handleHistory); socket.off('receive_message', handleReceiveMessage); };
   }, [socket, activeRoom, isConnected, user]);
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isChatOpen, isAiLoading]);
+  // 🟢 On fait défiler uniquement le conteneur des messages pour éviter tout décalage du viewport ou disparition du haut
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages, isChatOpen, isAiLoading]);
 
   // 🟢 NOUVEAU : Fonction pour basculer de salon quand on clique sur le Toggle
   const toggleAiProvider = () => {
@@ -247,72 +256,109 @@ export const GlobalChatWidget: React.FC = () => {
   const isCurrentRoomAi = activeRoomInfo?.name?.startsWith('ai-chat-') || activeRoomInfo?.name?.startsWith('ai-gemini-chat-');
 
   return (
-    <div className="fixed bottom-6 right-6 z-[90] flex flex-col items-end">
+    <>
       {isChatOpen && (
-        <div className="w-[350px] sm:w-[400px] h-[500px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl mb-4 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5">
-          
-          <div className="bg-slate-800 p-3 border-b border-slate-700 flex justify-between items-center shadow-sm z-10">
-            <div className="flex items-center gap-2">
+        <div
+          className={`fixed z-[95] bg-surface border-border shadow-2xl flex flex-col overflow-hidden transition-all duration-200
+            inset-0 w-full h-[100dvh] rounded-none border-none
+            inset-0 rounded-none border-none
+            sm:inset-auto sm:bottom-24 sm:right-6 sm:border sm:rounded-2xl
+            ${isExpanded 
+              ? 'sm:w-[750px] lg:w-[850px] sm:h-[80vh] sm:max-h-[850px]' 
+              : 'sm:w-[440px] md:w-[480px] sm:h-[580px] sm:max-h-[80vh]'
+            }
+          `}
+        >
+          {/* EN-TÊTE DE LA DISCUSSION */}
+          <div className="bg-surface-hover px-3 py-3 sm:px-4 border-b border-border flex justify-between items-center shadow-sm z-10 gap-2 shrink-0 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               {activeRoom !== null && (
-                <button onClick={() => setActiveRoom(null)} className="text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-700/50">←</button>
+                <button 
+                  onClick={() => setActiveRoom(null)} 
+                  className="text-text-muted hover:text-text-main px-2.5 py-1.5 rounded-lg bg-border/50 hover:bg-border shrink-0 text-sm font-medium transition-colors"
+                  title="Retour aux discussions"
+                >
+                  ←
+                </button>
               )}
               {activeRoom !== null ? (() => {
                 const roomInfo = getRoomDisplayInfo(activeRoomInfo || undefined);
                 return (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {roomInfo.targetUser ? (
                       <UserAvatar 
                         avatarUrl={roomInfo.targetUser.avatar} 
                         username={roomInfo.name} 
-                        className="w-7 h-7 border border-slate-600 cursor-pointer" 
+                        className="w-8 h-8 border border-border-subtle cursor-pointer shrink-0" 
                         onClick={() => navigate(`/${roomInfo.targetUser.username}`)}
                       />
                     ) : (
-                      <span className="text-lg">{roomInfo.icon}</span>
+                      <span className="text-xl shrink-0">{roomInfo.icon}</span>
                     )}
                     <span 
-                      className={`font-semibold text-sm ${roomInfo.targetUser ? 'cursor-pointer hover:underline' : ''}`}
+                      className={`font-semibold text-sm sm:text-base truncate max-w-[120px] sm:max-w-[200px] ${roomInfo.targetUser ? 'cursor-pointer hover:underline' : ''}`}
                       onClick={() => roomInfo.targetUser && navigate(`/${roomInfo.targetUser.username}`)}
+                      title={roomInfo.name}
                     >
                       {roomInfo.name}
                     </span>
 
                     {/* 🟢 LE BOUTON TOGGLE (SWITCH) S'AFFICHE ICI UNIQUEMENT DANS L'IA */}
                     {isCurrentRoomAi && (
-                      <div className="flex items-center gap-2 ml-3 bg-slate-900/50 p-1 px-2 rounded-full border border-slate-700">
-                        <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'ollama' ? 'text-indigo-400' : 'text-slate-600'}`}>Local</span>
+                      <div className="flex items-center gap-1.5 ml-auto sm:ml-2 bg-surface/70 p-1 px-2.5 rounded-full border border-border shrink-0">
+                        <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'ollama' ? 'text-primary' : 'text-text-muted'}`}>Local</span>
                         <button 
                           onClick={toggleAiProvider}
-                          className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${aiProvider === 'gemini' ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                          className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${aiProvider === 'gemini' ? 'bg-emerald-500' : 'bg-primary-hover'}`}
+                          title={`Basculer vers ${aiProvider === 'ollama' ? 'Gemini IA' : 'IA Locale (Ollama)'}`}
                         >
                           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${aiProvider === 'gemini' ? 'translate-x-4' : 'translate-x-1'}`}/>
                         </button>
-                        <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'gemini' ? 'text-emerald-400' : 'text-slate-600'}`}>Gemini</span>
+                        <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'gemini' ? 'text-emerald-400' : 'text-text-muted'}`}>Gemini</span>
                       </div>
                     )}
                   </div>
                 );
               })() : (
-                <span className="font-semibold text-sm">Discussions</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">💬</span>
+                  <span className="font-bold text-sm sm:text-base">Discussions</span>
+                </div>
               )}
             </div>
-            <button onClick={() => setIsChatOpen(false)} className="text-slate-400 hover:text-white px-2">✕</button>
+
+            {/* BOUTONS D'ACTIONS EN-TÊTE : AGRANDIR (Desktop) + FERMER */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button 
+                type="button" 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="hidden sm:inline-flex text-text-muted hover:text-text-main p-1.5 rounded-lg hover:bg-border/50 text-sm transition-colors"
+                title={isExpanded ? "Réduire la fenêtre" : "Agrandir la fenêtre"}
+              >
+                {isExpanded ? "🗗" : "⛶"}
+              </button>
+              <button 
+                onClick={() => setIsChatOpen(false)} 
+                className="text-text-muted hover:text-text-main p-1.5 rounded-lg hover:bg-border/50 text-base transition-colors"
+                title="Fermer"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 flex flex-col overflow-hidden relative bg-slate-950">
+          <div className="flex-1 flex flex-col overflow-hidden relative bg-bg min-h-0">
             {!isConnected ? (
-              <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">Connexion au serveur...</div>
+              <div className="flex-1 flex items-center justify-center text-text-muted text-sm">Connexion au serveur...</div>
             ) : activeRoom === null ? (
-              <ul className="flex-1 overflow-y-auto">
+              <ul className="flex-1 overflow-y-auto divide-y divide-slate-800/40">
                 {sortedRooms.length === 0 ? (
-                  <div className="p-4 text-center text-slate-500 text-sm mt-10">Aucune discussion</div>
+                  <div className="p-8 text-center text-text-muted text-sm mt-10">Aucune discussion</div>
                 ) : (
                   sortedRooms.map(room => {
                     const { name, icon, targetUser } = getRoomDisplayInfo(room);
                     return (
                       <li key={room.id} onClick={() => {
-                          // 🟢 Si on clique sur l'IA depuis la liste principale, 
-                          // ça ouvre la room liée au toggle actuellement sélectionné !
                           if (room.name?.startsWith('ai-chat-')) {
                               const targetName = aiProvider === 'ollama' ? `ai-chat-${user.id}` : `ai-gemini-chat-${user.id}`;
                               const targetRoom = rooms.find(r => r.name === targetName);
@@ -320,15 +366,15 @@ export const GlobalChatWidget: React.FC = () => {
                           } else {
                               setActiveRoom(room.id);
                           }
-                      }} className="p-4 border-b border-slate-800/50 hover:bg-slate-800 cursor-pointer flex items-center gap-3 transition-colors">
+                      }} className="p-4 hover:bg-surface-hover/70 cursor-pointer flex items-center gap-3 transition-colors">
                         {targetUser ? (
-                          <UserAvatar avatarUrl={targetUser.avatar} username={name} className="w-10 h-10 border border-slate-700" />
+                          <UserAvatar avatarUrl={targetUser.avatar} username={name} className="w-10 h-10 border border-border shrink-0" />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-indigo-900/50 flex items-center justify-center text-indigo-400 text-xl border border-indigo-500/20">
+                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl border border-primary/20 shrink-0">
                             {icon}
                           </div>
                         )}
-                        <span className="font-medium text-sm text-slate-200">{name}</span>
+                        <span className="font-medium text-sm text-text-main truncate">{name}</span>
                       </li>
                     );
                   })
@@ -336,37 +382,37 @@ export const GlobalChatWidget: React.FC = () => {
               </ul>
             ) : (
               <>
-                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3">
+                <div ref={chatScrollRef} className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3 min-h-0">
                   {messages.map((msg, index) => {
                     const isMe = msg.senderId === user.id || msg.sender?.id === user.id;
                     const senderName = msg.sender ? getDisplayName(msg.sender) : (msg.senderName || 'Utilisateur');
                     
                     return (
                       <div key={msg.id || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-2 max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`flex gap-2 max-w-[90%] sm:max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                           
                           {!isMe && (
                             <div className="flex-shrink-0 flex flex-col justify-end pb-1">
                               <UserAvatar 
                                 avatarUrl={msg.sender?.avatar} 
                                 username={senderName} 
-                                className="w-7 h-7 text-xs border border-slate-700 shadow-sm cursor-pointer hover:ring-2 hover:ring-indigo-400" 
+                                className="w-7 h-7 text-xs border border-border shadow-sm cursor-pointer hover:ring-2 hover:ring-primary" 
                                 onClick={() => msg.sender?.username && navigate(`/${msg.sender.username}`)}
                               />
                             </div>
                           )}
 
-                          <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                          <div className={`flex flex-col min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
                             {!isMe && (
                               <span 
-                                className="text-[10px] font-medium text-slate-500 mb-1 ml-1 cursor-pointer hover:underline" 
+                                className="text-[10px] font-medium text-text-muted mb-1 ml-1 cursor-pointer hover:underline truncate max-w-[140px]" 
                                 onClick={() => msg.sender?.username && navigate(`/${msg.sender.username}`)}
                               >
                                 {senderName}
                               </span>
                             )}
                             
-                            <div className={`p-2.5 rounded-2xl text-sm ${isMe ? 'bg-indigo-600 text-white rounded-br-sm shadow-md' : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-bl-sm shadow-sm'}`}>
+                            <div className={`p-3 rounded-2xl text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed ${isMe ? 'bg-primary text-primary-content rounded-br-sm shadow-md' : 'bg-surface-hover text-text-main border border-border rounded-bl-sm shadow-sm'}`}>
                               {msg.content}
                             </div>
                           </div>
@@ -378,28 +424,26 @@ export const GlobalChatWidget: React.FC = () => {
                   
                   {isAiLoading && (
                     <div className="flex w-full justify-start mt-2">
-                      <div className="p-2.5 rounded-2xl text-sm bg-slate-800 text-slate-400 border border-slate-700 rounded-bl-sm shadow-sm italic animate-pulse">
+                      <div className="p-3 rounded-2xl text-xs sm:text-sm bg-surface-hover text-text-muted border border-border rounded-bl-sm shadow-sm italic animate-pulse">
                         L'IA réfléchit...
                       </div>
                     </div>
                   )}
-
-                  <div ref={messagesEndRef} />
                 </div>
                 
-                <form onSubmit={handleSendChatMessage} className="p-3 bg-slate-900 border-t border-slate-800 flex gap-2">
+                <form onSubmit={handleSendChatMessage} className="p-3 bg-surface border-t border-border flex gap-2 items-center shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
                   <input 
                     type="text" 
                     value={chatInput} 
                     onChange={(e) => setChatInput(e.target.value)} 
                     placeholder={isCurrentRoomAi && aiCooldown > 0 ? `Attendez ${aiCooldown}s...` : "Écrire un message..."} 
                     disabled={isCurrentRoomAi && (isAiLoading || aiCooldown > 0)}
-                    className="flex-1 bg-slate-950 border border-slate-700 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50" 
+                    className="flex-1 min-w-0 bg-bg border border-border rounded-full px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-primary disabled:opacity-50 text-text-main" 
                   />
                   <button 
                     type="submit" 
                     disabled={!chatInput.trim() || (isCurrentRoomAi && (isAiLoading || aiCooldown > 0))} 
-                    className="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 hover:bg-indigo-500"
+                    className="bg-primary text-primary-content w-10 h-10 rounded-full flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-primary-hover transition-colors text-sm"
                   >
                     ➤
                   </button>
@@ -410,12 +454,14 @@ export const GlobalChatWidget: React.FC = () => {
         </div>
       )}
 
+      {/* BOUTON FLOTTANT D'OUVERTURE (Caché sur mobile quand le chat est déjà ouvert en plein écran) */}
       <button 
         onClick={() => setIsChatOpen(!isChatOpen)}
-        className={`w-14 h-14 rounded-full shadow-lg shadow-indigo-900/50 flex items-center justify-center text-2xl transition-transform hover:scale-105 ${isChatOpen ? 'bg-slate-700 text-white' : 'bg-indigo-600 text-white'}`}
+        className={`fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 sm:bottom-6 sm:right-6 z-[90] w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg shadow-primary/50 flex items-center justify-center text-xl sm:text-2xl transition-all hover:scale-105 ${isChatOpen ? 'hidden sm:flex bg-border text-text-main' : 'flex bg-primary text-primary-content'}`}
+        title={isChatOpen ? "Fermer le chat" : "Ouvrir le chat"}
       >
         {isChatOpen ? '✕' : '💬'}
       </button>
-    </div>
+    </>
   );
 };

@@ -24,7 +24,7 @@ export default function LoginSuccess() {
   }, [searchParams, navigate, loginGlobal]);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-100">
+    <div className="flex h-screen items-center justify-center bg-bg text-text-main">
       <p className="text-lg animate-pulse">Authentification 42 en cours...</p>
     </div>
   );

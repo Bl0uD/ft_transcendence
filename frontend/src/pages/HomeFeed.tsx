@@ -29,7 +29,7 @@ export default function HomeFeed() {
   const loginGlobal = useAuthStore((state: any) => state.login);
   
   const { socket } = useSocket('/'); 
-  const { fetchAllSocialData, blockedUsers } = useSocialStore(); 
+  const { fetchAllSocialData, blockedUsers, isDesktopSidebarOpen } = useSocialStore(); 
 
   const [showAuthModal, setShowAuthModal] = useState(false);
   // 🟢 NOUVEL ÉTAT : retient quelle vue on veut ouvrir
@@ -140,7 +140,7 @@ export default function HomeFeed() {
   );
 
   return (
-    <div className="flex h-screen bg-slate-900 text-white overflow-hidden relative">
+    <div className="flex h-dvh bg-surface text-text-main overflow-hidden relative w-full max-w-full">
       
       {/* 🟢 INTÉGRATION DE LA MODALE AVEC LA PROP initialView */}
       <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialView={authView} />
@@ -148,50 +148,63 @@ export default function HomeFeed() {
       {/* 🟢 NAVBAR GLOBALE */}
       <TopNavBar onLoginClick={() => { setAuthView('login'); setShowAuthModal(true); }} />
 
-      <div className="flex w-full pt-16 h-full">
+      <div className="flex w-full pt-16 h-full max-w-full overflow-hidden">
         {/* SIDEBAR */}
         {user ? (
           <SocialSidebar />
         ) : (
-          <aside className="hidden lg:flex w-80 bg-slate-800/50 border-r border-slate-700 flex-col h-full items-center justify-center p-6 text-center">
+          <aside className="hidden lg:flex w-80 bg-surface-hover/50 border-r border-border flex-col h-full items-center justify-center p-6 text-center shrink-0">
             <span className="text-5xl mb-4">👋</span>
             <h3 className="font-bold mb-2">Rejoignez le réseau</h3>
-            <p className="text-slate-400 text-sm mb-4">Connectez-vous pour interagir.</p>
+            <p className="text-text-muted text-sm mb-4">Connectez-vous pour interagir.</p>
             {/* 🟢 BOUTONS QUI CHANGERONT LA VUE DE LA MODALE */}
-            <button onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg mb-2">Se connecter</button>
-            <button onClick={() => { setAuthView('register'); setShowAuthModal(true); }} className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg">Créer un compte</button>
+            <button onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="w-full py-2 bg-primary text-primary-content hover:bg-primary-hover rounded-lg mb-2 font-semibold transition-colors shadow-sm">Se connecter</button>
+            <button onClick={() => { setAuthView('register'); setShowAuthModal(true); }} className="w-full py-2 bg-surface hover:bg-surface-hover text-text-main border border-border rounded-lg font-medium transition-colors">Créer un compte</button>
           </aside>
         )}
 
         {/* FEED */}
-        <main className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar">
-          <div className="max-w-2xl mx-auto flex flex-col gap-6 pb-20">
-            <h1 className="text-2xl font-bold text-slate-100">Fil d'actualité</h1>
+        <main className={`flex-1 overflow-y-auto p-3 sm:p-6 scroll-smooth custom-scrollbar w-full max-w-full min-w-0 transition-all ${user && !isDesktopSidebarOpen ? 'lg:pl-20' : ''}`}>
+          <div className="max-w-2xl mx-auto flex flex-col gap-4 sm:gap-6 pb-20 w-full max-w-full">
+            <h1 className="text-xl sm:text-2xl font-bold text-text-main">Fil d'actualité</h1>
+
+            {/* BANNIÈRE VISITEUR MOBILE */}
+            {!user && (
+              <div className="lg:hidden bg-surface-hover/80 border border-border p-4 rounded-xl text-center shadow-sm">
+                <span className="text-3xl mb-2 block">👋</span>
+                <h3 className="font-bold text-sm mb-1">Rejoignez le réseau</h3>
+                <p className="text-text-muted text-xs mb-3">Connectez-vous pour interagir avec les joueurs.</p>
+                <div className="flex gap-2 justify-center">
+                  <button onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="px-4 py-1.5 bg-primary text-primary-content hover:bg-primary-hover rounded-lg text-xs font-semibold transition-colors shadow-sm">Se connecter</button>
+                  <button onClick={() => { setAuthView('register'); setShowAuthModal(true); }} className="px-4 py-1.5 bg-surface hover:bg-surface-hover text-text-main border border-border rounded-lg text-xs font-medium transition-colors">Créer un compte</button>
+                </div>
+              </div>
+            )}
 
             {/* Créer un Post */}
             {user && (
-              <div className="w-full bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-sm">
-                <form onSubmit={submitPost} className="flex flex-col gap-4">
-                  <div className="flex gap-4">
-                    <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-10 h-10 border border-slate-600" onClick={() => navigate(`/${user.username}`)} />
-                    <textarea placeholder={`Quoi de neuf, ${getDisplayName(user)} ?`} value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} className="flex-1 bg-slate-900/50 rounded-lg py-3 px-4 border border-slate-700 focus:border-indigo-500 focus:outline-none resize-none min-h-[80px]" />
+              <div className="w-full bg-surface-hover p-4 sm:p-5 rounded-xl border border-border shadow-sm">
+                <form onSubmit={submitPost} className="flex flex-col gap-3 sm:gap-4">
+                  <div className="flex gap-3 sm:gap-4">
+                    <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/${user.username}`)} />
+                    <textarea placeholder={`Quoi de neuf, ${getDisplayName(user)} ?`} value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} className="flex-1 bg-surface/50 rounded-lg py-2.5 sm:py-3 px-3 sm:px-4 border border-border focus:border-primary focus:outline-none resize-none min-h-[75px] text-xs sm:text-sm" />
                   </div>
                   {newPostPreview && (
-                    <div className="relative ml-14">
-                      <img src={newPostPreview} alt="Preview" className="rounded-lg max-h-60 object-contain bg-slate-900 border border-slate-700" />
-                      <button type="button" onClick={() => { setNewPostImage(null); setNewPostPreview(null); }} className="absolute top-2 right-2 bg-slate-800/80 p-1.5 rounded-full hover:bg-red-500">✕</button>
+                    <div className="relative ml-0 sm:ml-14">
+                      <img src={newPostPreview} alt="Preview" className="rounded-lg max-h-48 sm:max-h-60 object-contain bg-surface border border-border" />
+                      <button type="button" onClick={() => { setNewPostImage(null); setNewPostPreview(null); }} className="absolute top-2 right-2 bg-surface-hover/80 p-1.5 rounded-full hover:bg-red-500 text-xs">✕</button>
                     </div>
                   )}
-                  <div className="flex justify-between items-center ml-14">
-                    <div className="flex gap-4 items-center">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="text-indigo-400 text-sm font-medium">📸 Image</button>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 ml-0 sm:ml-14">
+                    <div className="flex gap-3 sm:gap-4 items-center justify-between sm:justify-start">
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="text-primary text-xs sm:text-sm font-medium hover:text-primary transition-colors">📸 Image</button>
                       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {const f = e.target.files?.[0]; if(f){setNewPostImage(f); setNewPostPreview(URL.createObjectURL(f));}}} />
-                      <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-slate-900 border border-slate-700 text-xs rounded p-1.5 text-slate-200 outline-none">
+                      <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-surface border border-border text-xs rounded p-1.5 text-text-main outline-none">
                         <option value="public">🌐 Public</option>
                         <option value="friends">👥 Amis uniquement</option>
                       </select>
                     </div>
-                    <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">Publier</button>
+                    <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="w-full sm:w-auto bg-primary text-primary-content hover:bg-primary-hover px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold disabled:opacity-50 transition-colors shadow-sm">Publier</button>
                   </div>
                 </form>
               </div>
@@ -199,53 +212,65 @@ export default function HomeFeed() {
 
             {/* Liste des Posts */}
             {visiblePosts.map((post) => (
-              <div key={post.id} className="w-full bg-slate-800 rounded-xl border border-slate-700 shadow-sm flex flex-col">
-                <div className="p-4 flex items-center gap-3">
-                  <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-10 h-10 border border-slate-600" onClick={() => navigate(`/${post.author.username}`)} />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold cursor-pointer hover:underline" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{post.isPublic ? 'Public' : 'Amis'}</span>
+              <div key={post.id} className="w-full bg-surface-hover rounded-xl border border-border shadow-sm flex flex-col">
+                <div className="p-3 sm:p-4 flex items-center gap-3">
+                  <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm sm:text-base cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
+                      <span className="text-[10px] uppercase font-bold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">{post.isPublic ? 'Public' : 'Amis'}</span>
                     </div>
-                    <span className="text-xs text-slate-400">{new Date(post.createdAt).toLocaleString()}</span>
+                    <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                   </div>
                 </div>
-                {post.content && <div className="px-4 pb-3 whitespace-pre-wrap">{post.content}</div>}
+                {post.content && <div className="px-3 sm:px-4 pb-3 whitespace-pre-wrap text-xs sm:text-sm break-words">{post.content}</div>}
                 {post.imageUrl && (
-                  <div className="w-full bg-slate-900 border-y border-slate-700 flex justify-center max-h-[500px]">
-                    <img src={`/api${post.imageUrl}`} alt="Content" className="object-contain w-full h-full" />
+                  <div className="w-full bg-surface/40 border-y border-border overflow-hidden flex items-center justify-center max-h-[550px]">
+                    <img 
+                      src={`/api${post.imageUrl}`} 
+                      alt="Contenu du post" 
+                      className="w-auto h-auto max-w-full max-h-[550px] object-contain mx-auto" 
+                      loading="lazy"
+                    />
                   </div>
                 )}
                 
-                <div className="px-4 py-3 flex gap-6 border-t border-slate-700/50">
-                  <button onClick={() => { if (!user) { setAuthView('login'); setShowAuthModal(true); } else toggleLike(post.id); }} className={`flex items-center gap-2 text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-slate-400 hover:text-slate-200'}`}>
+                <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex gap-4 sm:gap-6 border-t border-border/50">
+                  <button onClick={() => { if (!user) { setAuthView('login'); setShowAuthModal(true); } else toggleLike(post.id); }} className={`flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-text-muted hover:text-text-main'}`}>
                     {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
                   </button>
-                  <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
+                  <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-text-muted hover:text-text-main transition-colors">
                     💬 {post._count.comments} Commentaires
                   </button>
                 </div>
 
                 {openComments[post.id] && (
-                  <div className="bg-slate-900/50 p-4 border-t border-slate-700">
+                  <div className="bg-surface/50 p-3 sm:p-4 border-t border-border">
                     <div className="space-y-3 mb-4 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
-                      {post.comments.map(c => (
-                        <div key={c.id} className="flex gap-3 text-sm">
-                          <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 text-xs border border-slate-700" onClick={() => navigate(`/${c.user.username}`)} />
-                          <div className="bg-slate-800 px-3 py-2 rounded-xl rounded-tl-none border border-slate-700">
-                            <span className="font-semibold text-slate-300 mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/${c.user.username}`)}>{getDisplayName(c.user)}</span>
-                            <span className="text-slate-200">{c.content}</span>
+                      {post.comments.length === 0 ? (
+                        <p className="text-center text-xs text-text-muted py-2">Aucun commentaire pour le moment.</p>
+                      ) : (
+                        post.comments.map(c => (
+                          <div key={c.id} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
+                            <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 text-xs border border-border shrink-0" onClick={() => navigate(`/${c.user.username}`)} />
+                            <div className="bg-surface-hover px-3 py-2 rounded-xl rounded-tl-none border border-border min-w-0 max-w-full">
+                              <span className="font-semibold text-text-muted mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/${c.user.username}`)}>{getDisplayName(c.user)}</span>
+                              <span className="text-text-main break-words">{c.content}</span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                     {user ? (
-                      <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2">
-                        <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-8 h-8 text-sm border border-slate-700" />
-                        <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-slate-800 border border-slate-600 rounded-full px-4 py-1.5 text-sm focus:outline-none focus:border-indigo-500" />
+                      <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2 items-center">
+                        <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-7 h-7 sm:w-8 sm:h-8 text-xs border border-border shrink-0" />
+                        <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-surface-hover border border-border-subtle rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm focus:outline-none focus:border-primary" />
+                        <button type="submit" disabled={!commentInputs[post.id]?.trim()} className="bg-primary text-primary-content w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-primary-hover text-xs">
+                          ➤
+                        </button>
                       </form>
                     ) : (
-                      <div className="text-center p-2"><button type="button" onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="text-sm text-indigo-400 hover:underline">Se connecter pour commenter</button></div>
+                      <div className="text-center p-2"><button type="button" onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="text-xs sm:text-sm text-primary hover:underline">Se connecter pour commenter</button></div>
                     )}
                   </div>
                 )}

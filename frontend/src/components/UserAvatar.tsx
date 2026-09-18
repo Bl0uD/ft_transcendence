@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 interface UserAvatarProps {
   avatarUrl?: string | null;
@@ -23,14 +23,14 @@ export default function UserAvatar({
   const initial = username.charAt(0).toUpperCase();
   
   // Classes de base (arrondi, comportement au clic, fusion avec la taille passée)
-  const baseClasses = `rounded-full shrink-0 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all' : ''} ${className}`;
+  const baseClasses = `rounded-full shrink-0 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary transition-all' : ''} ${className}`;
 
   // S'il n'y a pas d'image ou si elle est cassée -> Affichage de la lettre
   if (!avatarUrl || hasError) {
     return (
       <div
         onClick={onClick}
-        className={`${baseClasses} bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-200 font-bold`}
+        className={`${baseClasses} bg-border border border-border-subtle flex items-center justify-center text-text-main font-bold`}
       >
         {initial}
       </div>

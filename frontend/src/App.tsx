@@ -1,21 +1,23 @@
 // src/App.tsx
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import HomeFeed from './pages/HomeFeed';
 import PublicProfile from './pages/PublicProfile';
 import { GlobalChatWidget } from './components/GlobalChatWidget';
 
 import { useAuthStore } from './store/authStore';
+import { useThemeStore } from './store/themeStore';
 import api from './api/axios'; 
-
-const ProtectedRoute = () => {
-  const isAuthenticated = useAuthStore((state: any) => state.isAuthenticated);
-  return isAuthenticated ? <Outlet /> : <Navigate to="/" replace />;
-};
 
 function App() {
   const { isAuthenticated, user, login, logout } = useAuthStore();
+  const { mode, colorTheme } = useThemeStore();
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', mode);
+    document.documentElement.setAttribute('data-color', colorTheme);
+  }, [mode, colorTheme]);
 
   useEffect(() => {
     const fetchProfile = async () => {

@@ -42,11 +42,11 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
   };
 
   return (
-    // 🟢 On retire les bordures/fonds (bg-slate-900, border, shadow) car la modale parent s'en charge déjà !
-    <div className="w-full space-y-6 text-slate-100">
+    // 🟢 On retire les bordures/fonds (bg-surface, border, shadow) car la modale parent s'en charge déjà !
+    <div className="w-full space-y-6 text-text-main">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-white">Double Authentification</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <h2 className="text-2xl font-bold text-text-main">Double Authentification</h2>
+        <p className="mt-2 text-sm text-text-muted">
           Entrez le code à 6 chiffres généré par votre application (Google Authenticator, Authy...)
         </p>
       </div>
@@ -61,11 +61,13 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
         <div>
           <input
             type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             maxLength={6}
             required
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950/50 px-4 py-3 text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-center tracking-[0.5em] text-2xl font-mono"
+            className="w-full rounded-lg border border-border bg-bg/50 px-3 sm:px-4 py-3 text-text-main placeholder-slate-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary text-center tracking-[0.25em] sm:tracking-[0.5em] text-xl sm:text-2xl font-mono"
             placeholder="000000"
           />
         </div>
@@ -74,7 +76,7 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
           <button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="w-full justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+            className="w-full justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-content hover:bg-primary-hover disabled:opacity-50 transition-colors"
           >
             {loading ? 'Vérification...' : 'Valider'}
           </button>
@@ -82,7 +84,7 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
           <button
             type="button"
             onClick={() => setRequires2FA(false)}
-            className="text-sm text-slate-400 hover:text-white transition-colors"
+            className="text-sm text-text-muted hover:text-text-main transition-colors"
           >
             Annuler et retourner à la connexion
           </button>
