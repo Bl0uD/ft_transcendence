@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useSocialStore } from '../store/socialStore';
 import { useChatStore } from '../store/chatStore'; 
-import { useSocket } from '../hooks/useSocket'; 
+import { useSocket } from '../hooks/useSocket';
 import { SocialIcon, SidebarIcon, ChatIcon } from './HeaderIcons';
 import api from '../api/axios'; 
 
@@ -27,6 +27,7 @@ export default function SocialSidebar() {
     isDesktopSidebarOpen, setIsDesktopSidebarOpen,
     sendRequest, acceptRequest, unblockUser, initSocketListeners 
   } = useSocialStore();
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   // Initialisation des écouteurs de statut (pastilles vertes/grises) au montage
   useEffect(() => {
@@ -43,6 +44,23 @@ export default function SocialSidebar() {
       setTargetUsername('');
     } catch(e) {}
   };
+
+  const FindSuggestions = async (value: string) => {
+    const query = value.trim();   
+    if (!query) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const response = await api.get(`/users/search/${query}`);
+      const users = Array.isArray(response.data) ? response.data : [];
+      setSuggestions(users);
+      
+    } catch (err) {
+      console.error("Erreur lors de la recherche des utilisateurs :", err);
+      setSuggestions([]);
+    }
+};
 
   const handleSendMessage = async (targetUserId: number) => {
     try {
@@ -91,12 +109,15 @@ export default function SocialSidebar() {
             </button>
           </div>
         </div>
-        <form onSubmit={handleAddFriend} className="flex gap-2">
+        <form onSubmit={handleAddFriend} className="flex gap-2 relative">
           <input 
             type="text" 
             placeholder="Ajouter un ami..." 
             value={targetUsername} 
-            onChange={(e) => setTargetUsername(e.target.value)} 
+            onChange={(e) => {
+              setTargetUsername(e.target.value);
+              FindSuggestions(e.target.value);
+            }}
             className="p-2 border border-border-subtle rounded-lg bg-surface flex-1 text-sm focus:outline-none focus:border-primary text-text-main" 
           />
           <button 
@@ -105,6 +126,23 @@ export default function SocialSidebar() {
           >
             Ajouter
           </button>
+          {suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-[5.5rem] mt-1 z-20 rounded-lg border border-border bg-surface shadow-lg overflow-hidden">
+              {suggestions.map(suggestion => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onClick={() => {
+                    setTargetUsername(suggestion.username);
+                    setSuggestions([]);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm text-text-main hover:bg-surface-hover"
+                >
+                  {getDisplayName(suggestion)}
+                </button>
+              ))}
+            </div>
+          )}
         </form>
       </div>
       

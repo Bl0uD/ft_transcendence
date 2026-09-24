@@ -26,6 +26,25 @@ export class UsersService {
     return user;
   }
 
+  async searchUsers(query: string) {
+    const users = await this.prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { nickname: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        id: true,
+        username: true,
+        nickname: true,
+        avatar: true,
+      },
+      take: 5, // Limite le nombre de résultats pour éviter de surcharger le frontend
+    });
+    return users;
+  }
+
   // 🔒 MISE À JOUR : Ajout du paramètre `nickname`
   async updateProfile(
     userId: number | string, 

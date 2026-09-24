@@ -18,6 +18,10 @@ export class UsersController {
     return this.usersService.getPublicProfile(username);
   }
 
+  @Get('search/:query')
+  async searchUsers(@Param('query') query: string) {
+    return this.usersService.searchUsers(query);
+  }
   // 🔒 ROUTE PROTÉGÉE : Modification des paramètres
   @UseGuards(JwtTwoFactorGuard)
   @Put('profile')

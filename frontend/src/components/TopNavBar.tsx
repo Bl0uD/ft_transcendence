@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSocialStore } from '../store/socialStore';
 import { useThemeStore } from '../store/themeStore';
 import UserAvatar from './UserAvatar';
+import api from '../api/axios';
 import { SearchIcon, DarkIcon, LightIcon, SidebarIcon } from './HeaderIcons';
 
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
@@ -23,6 +24,8 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
   const { mode, setMode } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [targetUsername, setTargetUsername] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +35,23 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
       setShowMobileSearch(false);
     }
   };
+
+  const FindSuggestions = async (value: string) => {
+    const query = value.trim();   
+    if (!query) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const response = await api.get(`/users/search/${query}`);
+      const users = Array.isArray(response.data) ? response.data : [];
+      setSuggestions(users);
+      
+    } catch (err) {
+      console.error("Erreur lors de la recherche des utilisateurs :", err);
+      setSuggestions([]);
+    }
+};
 
   return (
     <nav className="fixed top-0 left-0 w-full max-w-full h-16 bg-surface-hover border-b border-border z-50 flex items-center justify-between px-3 sm:px-6 shadow-md">
@@ -64,17 +84,38 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
 
         {/* BARRE DE RECHERCHE DESKTOP */}
         <form onSubmit={handleSearch} className="hidden sm:flex items-center">
+          {/* Le relative englobe maintenant TOUT : l'input ET la liste */}
           <div className="relative">
             <input
               type="text"
               placeholder="Chercher un pseudo..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchQuery} // On utilise searchQuery
+              onChange={(e) => {
+                setSearchQuery(e.target.value); // On met à jour searchQuery et plus targetUsername
+                FindSuggestions(e.target.value);
+              }}
               className="bg-surface border border-border-subtle rounded-full py-1.5 pl-4 pr-10 text-sm text-text-main focus:outline-none focus:border-primary w-48 md:w-64 transition-all"
             />
             <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-primary transition-colors flex items-center justify-center">
               <SearchIcon className="w-4 h-4" />
             </button>
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-1 z-20 rounded-lg border border-border bg-surface shadow-lg overflow-hidden">
+                {suggestions.map(suggestion => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(suggestion.username); // On met à jour le bon état au clic
+                      setSuggestions([]);
+                    }}
+                    className="block w-full px-3 py-2 text-left text-sm text-text-main hover:bg-surface-hover"
+                  >
+                    {getDisplayName(suggestion)}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </form>
       </div>
@@ -136,8 +177,11 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
               type="text"
               autoFocus
               placeholder="Chercher un pseudo..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={targetUsername}
+              onChange={(e) => {
+                setTargetUsername(e.target.value);
+                FindSuggestions(e.target.value);
+              }}
               className="flex-1 bg-surface border border-border-subtle rounded-full py-2 px-4 text-sm text-text-main focus:outline-none focus:border-primary"
             />
             <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary-hover rounded-full text-xs font-semibold text-primary-content">
@@ -150,6 +194,23 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
             >
               ✕
             </button>
+            {suggestions.length > 0 && (
+              <div className="absolute top-full left-0 w-full mt-1 z-20 rounded-lg border border-border bg-surface shadow-lg overflow-hidden">
+                {suggestions.map(suggestion => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(suggestion.username); // On met à jour le bon état au clic
+                      setSuggestions([]);
+                    }}
+                    className="block w-full px-3 py-2 text-left text-sm text-text-main hover:bg-surface-hover"
+                  >
+                    {getDisplayName(suggestion)}
+                  </button>
+                ))}
+              </div>
+            )}
           </form>
         </div>
       )}
