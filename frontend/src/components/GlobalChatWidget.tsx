@@ -6,6 +6,7 @@ import { useSocket } from '../hooks/useSocket';
 import api from '../api/axios';
 import UserAvatar from './UserAvatar';
 import { streamAIChat } from '../api/aiApi'; 
+import { ChatIcon, RobotIcon, FriendsIcon } from './HeaderIcons';
 
 // --- INTERFACES ---
 interface User { id: number; username: string; nickname?: string | null; avatar?: string | null; }
@@ -13,6 +14,7 @@ interface Message {
   id?: number | string; senderId?: number; senderName?: string; content: string;
   timestamp?: string; createdAt?: string; created_at?: string;
   sender?: { id: number; username: string; nickname?: string | null; avatar?: string; };
+  channelId?: number;
 }
 interface RoomMember { userId: number; user: User; }
 interface Room { 
@@ -28,12 +30,14 @@ const getDisplayName = (account?: { username?: string; nickname?: string | null 
   return account.nickname && account.nickname.trim() !== '' ? account.nickname : account.username;
 };
 
+const processedMessageIds = new Set<string | number>();
+
 export const GlobalChatWidget: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state: any) => state.user);
   const { socket, isConnected } = useSocket('/chat');
   
-  const { isChatOpen, setIsChatOpen, activeRoom, setActiveRoom } = useChatStore();
+  const { isChatOpen, setIsChatOpen, activeRoom, setActiveRoom, unreadCounts, incrementUnread } = useChatStore();
   
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -100,10 +104,27 @@ export const GlobalChatWidget: React.FC = () => {
   useEffect(() => {
     if (!isConnected || !socket || !user) return;
     const handleGlobalUpdate = () => fetchRooms();
+    const handleGlobalReceiveMessage = (msg: Message) => {
+      fetchRooms();
+      
+      // Prevent double counting if the backend sends the message twice (to room and to user's personal channel)
+      if (msg.id && processedMessageIds.has(msg.id)) return;
+      if (msg.id) processedMessageIds.add(msg.id);
+      
+      // Keep set size manageable
+      if (processedMessageIds.size > 500) {
+        const iterator = processedMessageIds.values();
+        for (let i = 0; i < 100; i++) processedMessageIds.delete(iterator.next().value!);
+      }
+
+      if (msg.channelId && msg.senderId !== user.id && msg.sender?.id !== user.id) {
+        incrementUnread(msg.channelId);
+      }
+    };
     socket.on('rooms_updated', handleGlobalUpdate);
-    socket.on('receive_message', handleGlobalUpdate); 
-    return () => { socket.off('rooms_updated', handleGlobalUpdate); socket.off('receive_message', handleGlobalUpdate); };
-  }, [isConnected, socket, user]); 
+    socket.on('receive_message', handleGlobalReceiveMessage); 
+    return () => { socket.off('rooms_updated', handleGlobalUpdate); socket.off('receive_message', handleGlobalReceiveMessage); };
+  }, [isConnected, socket, user, incrementUnread]); 
 
   useEffect(() => {
     if (!isConnected || !socket || !user || activeRoom === null) {
@@ -222,17 +243,17 @@ export const GlobalChatWidget: React.FC = () => {
   };
 
   const getRoomDisplayInfo = (room?: Room) => {
-    if (!room) return { name: 'Chargement...', icon: '⏳', targetUser: null };
+    if (!room) return { name: 'Chargement...', icon: <span className="text-xl">⏳</span>, targetUser: null };
     if (room.type === 'DIRECT' || room.name?.startsWith('dm_')) {
       const otherMember = room.members?.find(m => m.userId !== user?.id);
-      if (otherMember?.user) return { name: getDisplayName(otherMember.user), icon: '💬', targetUser: otherMember.user };
-      return { name: 'Message Privé', icon: '💬', targetUser: null };
+      if (otherMember?.user) return { name: getDisplayName(otherMember.user), icon: <ChatIcon className="w-5 h-5 text-current" />, targetUser: otherMember.user };
+      return { name: 'Message Privé', icon: <ChatIcon className="w-5 h-5 text-current" />, targetUser: null };
     }
     // 🟢 Nom d'affichage commun pour les deux IA dans la liste des salons
     if (room.name?.startsWith('ai-chat-') || room.name?.startsWith('ai-gemini-chat-')) {
-      return { name: 'Assistant IA', icon: '🤖', targetUser: null };
+      return { name: 'Assistant IA', icon: <RobotIcon className="w-6 h-6 text-current" />, targetUser: null };
     }
-    return { name: room.name ? `# ${room.name}` : 'Salon inconnu', icon: '👥', targetUser: null };
+    return { name: room.name ? `# ${room.name}` : 'Salon inconnu', icon: <FriendsIcon className="w-5 h-5 text-current" />, targetUser: null };
   };
 
   if (!user) return null;
@@ -254,6 +275,8 @@ export const GlobalChatWidget: React.FC = () => {
 
   const activeRoomInfo = activeRoom ? rooms.find(r => r.id === activeRoom) : null;
   const isCurrentRoomAi = activeRoomInfo?.name?.startsWith('ai-chat-') || activeRoomInfo?.name?.startsWith('ai-gemini-chat-');
+
+  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + (b as number), 0);
 
   return (
     <>
@@ -321,7 +344,7 @@ export const GlobalChatWidget: React.FC = () => {
                 );
               })() : (
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">💬</span>
+                  <span className="text-primary flex items-center justify-center bg-primary/10 w-8 h-8 rounded-lg"><ChatIcon className="w-5 h-5" /></span>
                   <span className="font-bold text-sm sm:text-base">Discussions</span>
                 </div>
               )}
@@ -357,24 +380,34 @@ export const GlobalChatWidget: React.FC = () => {
                 ) : (
                   sortedRooms.map(room => {
                     const { name, icon, targetUser } = getRoomDisplayInfo(room);
+                    const isAi = room.name?.startsWith('ai-chat-');
+                    const unreadCount = isAi ? 0 : (unreadCounts[room.id] || 0);
+                    
                     return (
                       <li key={room.id} onClick={() => {
-                          if (room.name?.startsWith('ai-chat-')) {
+                          if (isAi) {
                               const targetName = aiProvider === 'ollama' ? `ai-chat-${user.id}` : `ai-gemini-chat-${user.id}`;
                               const targetRoom = rooms.find(r => r.name === targetName);
                               setActiveRoom(targetRoom ? targetRoom.id : (aiProvider === 'ollama' ? -1 : -2));
                           } else {
                               setActiveRoom(room.id);
                           }
-                      }} className="p-4 hover:bg-surface-hover/70 cursor-pointer flex items-center gap-3 transition-colors">
-                        {targetUser ? (
-                          <UserAvatar avatarUrl={targetUser.avatar} username={name} className="w-10 h-10 border border-border shrink-0" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl border border-primary/20 shrink-0">
-                            {icon}
+                      }} className="p-4 hover:bg-surface-hover/70 cursor-pointer flex items-center justify-between gap-3 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {targetUser ? (
+                            <UserAvatar avatarUrl={targetUser.avatar} username={name} className="w-10 h-10 border border-border shrink-0" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl border border-primary/20 shrink-0">
+                              {icon}
+                            </div>
+                          )}
+                          <span className={`text-sm truncate ${unreadCount > 0 ? 'text-text-main font-bold' : 'text-text-main font-medium'}`}>{name}</span>
+                        </div>
+                        {unreadCount > 0 && (
+                          <div className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-sm shrink-0">
+                            {unreadCount > 9 ? '9+' : unreadCount}
                           </div>
                         )}
-                        <span className="font-medium text-sm text-text-main truncate">{name}</span>
                       </li>
                     );
                   })
@@ -455,13 +488,20 @@ export const GlobalChatWidget: React.FC = () => {
       )}
 
       {/* BOUTON FLOTTANT D'OUVERTURE (Caché sur mobile quand le chat est déjà ouvert en plein écran) */}
-      <button 
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className={`fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 sm:bottom-6 sm:right-6 z-[90] w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg shadow-primary/50 flex items-center justify-center text-xl sm:text-2xl transition-all hover:scale-105 ${isChatOpen ? 'hidden sm:flex bg-border text-text-main' : 'flex bg-primary text-primary-content'}`}
-        title={isChatOpen ? "Fermer le chat" : "Ouvrir le chat"}
-      >
-        {isChatOpen ? '✕' : '💬'}
-      </button>
+      <div className={`fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-4 sm:bottom-6 sm:right-6 z-[90] ${isChatOpen ? 'hidden sm:block' : 'block'}`}>
+        <button 
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-lg shadow-primary/50 flex items-center justify-center transition-all hover:scale-105 ${isChatOpen ? 'bg-border text-text-main' : 'bg-primary text-primary-content'}`}
+          title={isChatOpen ? "Fermer le chat" : "Ouvrir le chat"}
+        >
+          {isChatOpen ? <span className="text-xl sm:text-2xl">✕</span> : <ChatIcon className="w-6 h-6 sm:w-7 sm:h-7" />}
+          {!isChatOpen && totalUnread > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-bg">
+              {totalUnread > 9 ? '9+' : totalUnread}
+            </span>
+          )}
+        </button>
+      </div>
     </>
   );
 };

@@ -1,13 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useSocialStore } from '../store/socialStore';
+import { useChatStore } from '../store/chatStore';
 import { useSocket } from '../hooks/useSocket';
 import api from '../api/axios';
 import UserAvatar from '../components/UserAvatar';
 import SocialSidebar from '../components/SocialSidebar';
 import TopNavBar from '../components/TopNavBar';
 import AuthModals from '../components/AuthModals';
+import { PhotoIcon, GlobeIcon, FriendsIcon, LikeIcon, BubbleIcon } from '../components/HeaderIcons';
 
 interface Comment { id: number; content: string; createdAt: string; user: any; }
 interface Post {
@@ -24,15 +26,16 @@ const getDisplayName = (account?: { username?: string; nickname?: string | null 
 export default function HomeFeed() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   
   const user = useAuthStore((state: any) => state.user);
   const loginGlobal = useAuthStore((state: any) => state.login);
   
   const { socket } = useSocket('/'); 
   const { fetchAllSocialData, blockedUsers, isDesktopSidebarOpen } = useSocialStore(); 
+  const isChatOpen = useChatStore((state) => state.isChatOpen);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
-  // 🟢 NOUVEL ÉTAT : retient quelle vue on veut ouvrir
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -71,7 +74,28 @@ export default function HomeFeed() {
   };
 
   useEffect(() => {
+    // Reload when component mounts, user logs in/out, or location key changes
     loadFeed();
+  }, [location.key, user]);
+
+  useEffect(() => {
+    // Reload when chat is closed
+    if (!isChatOpen) {
+      loadFeed();
+    }
+  }, [isChatOpen]);
+
+  useEffect(() => {
+    // Reload when user comes back to the tab/app
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadFeed();
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -197,12 +221,18 @@ export default function HomeFeed() {
                   )}
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 ml-0 sm:ml-14">
                     <div className="flex gap-3 sm:gap-4 items-center justify-between sm:justify-start">
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="text-primary text-xs sm:text-sm font-medium hover:text-primary transition-colors">📸 Image</button>
+                      <button type="button" title="Ajouter une image" onClick={() => fileInputRef.current?.click()} className="text-primary flex items-center justify-center p-2 rounded-full hover:bg-primary/10 transition-colors"><PhotoIcon className="w-6 h-6 sm:w-7 sm:h-7" /></button>
                       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {const f = e.target.files?.[0]; if(f){setNewPostImage(f); setNewPostPreview(URL.createObjectURL(f));}}} />
-                      <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-surface border border-border text-xs rounded p-1.5 text-text-main outline-none">
-                        <option value="public">🌐 Public</option>
-                        <option value="friends">👥 Amis uniquement</option>
-                      </select>
+                      
+                      <div className="relative flex items-center">
+                        <span className="absolute left-2 text-text-muted pointer-events-none">
+                          {isPublicPost ? <GlobeIcon className="w-3.5 h-3.5" /> : <FriendsIcon className="w-3.5 h-3.5" />}
+                        </span>
+                        <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-surface border border-border text-xs rounded py-1.5 pl-7 pr-2 text-text-main outline-none appearance-none cursor-pointer">
+                          <option value="public">Public</option>
+                          <option value="friends">Amis uniquement</option>
+                        </select>
+                      </div>
                     </div>
                     <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="w-full sm:w-auto bg-primary text-primary-content hover:bg-primary-hover px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold disabled:opacity-50 transition-colors shadow-sm">Publier</button>
                   </div>
@@ -218,7 +248,7 @@ export default function HomeFeed() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm sm:text-base cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
-                      <span className="text-[10px] uppercase font-bold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">{post.isPublic ? 'Public' : 'Amis'}</span>
+                      <span className="text-[10px] uppercase font-bold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
                     </div>
                     <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                   </div>
@@ -237,10 +267,10 @@ export default function HomeFeed() {
                 
                 <div className="px-3 sm:px-4 py-2.5 sm:py-3 flex gap-4 sm:gap-6 border-t border-border/50">
                   <button onClick={() => { if (!user) { setAuthView('login'); setShowAuthModal(true); } else toggleLike(post.id); }} className={`flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-text-muted hover:text-text-main'}`}>
-                    {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
+                    {post.likes.length > 0 ? <LikeIcon className="w-4 h-4 fill-current" /> : <LikeIcon className="w-4 h-4" />} {post._count.likes}
                   </button>
                   <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-text-muted hover:text-text-main transition-colors">
-                    💬 {post._count.comments} Commentaires
+                    <BubbleIcon className="w-4 h-4" /> {post._count.comments} Commentaires
                   </button>
                 </div>
 

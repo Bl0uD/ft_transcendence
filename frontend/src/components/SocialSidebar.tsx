@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useSocialStore } from '../store/socialStore';
 import { useChatStore } from '../store/chatStore'; 
 import { useSocket } from '../hooks/useSocket'; 
-import { SocialIcon, SidebarIcon } from './HeaderIcons';
+import { SocialIcon, SidebarIcon, ChatIcon } from './HeaderIcons';
 import api from '../api/axios'; 
 
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
@@ -174,9 +174,9 @@ export default function SocialSidebar() {
                 
                 <button 
                   onClick={() => handleSendMessage(f.id)} 
-                  className="text-xs font-semibold text-primary-content bg-primary hover:bg-primary-hover px-2.5 py-1.5 rounded-lg transition-colors shrink-0 shadow-sm"
+                  className="flex items-center gap-1.5 justify-center text-xs font-semibold text-primary-content bg-primary hover:bg-primary-hover px-2.5 py-1.5 rounded-lg transition-colors shrink-0 shadow-sm"
                 >
-                  💬 Message
+                  <ChatIcon className="w-3.5 h-3.5" /> Message
                 </button>
               </div>
             ))

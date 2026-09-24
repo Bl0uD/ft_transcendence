@@ -9,7 +9,8 @@ import UserAvatar from '../components/UserAvatar';
 import TwoFactorSetup from '../components/TwoFactorSetup';
 import SocialSidebar from '../components/SocialSidebar'; 
 import TopNavBar from '../components/TopNavBar';
-import AuthModals from '../components/AuthModals'; // 👈 IMPORT DE LA MODALE
+import AuthModals from '../components/AuthModals';
+import { GlobeIcon, FriendsIcon, LikeIcon, BubbleIcon, ChatIcon, ClosedEyeIcon, OpenedEyeIcon, ForbiddenIcon, UnknownIcon, SettingsIcon } from '../components/HeaderIcons';
 
 interface User { id: number; username: string; nickname?: string | null; avatar?: string | null; }
 interface Comment { id: number; content: string; createdAt: string; user: User; }
@@ -119,6 +120,30 @@ export default function PublicProfile() {
     wasBlocked.current = isBlocked;
   }, [isBlocked, profileData]);
 
+  // NOUVEAU: Recharger les posts du profil plus souvent
+  const isChatOpen = useChatStore((state) => state.isChatOpen);
+  useEffect(() => {
+    if (profileData && !isBlocked) {
+      const loadPosts = () => {
+        api.get(`/posts/user/${profileData.id}`)
+           .then(res => setPosts(res.data))
+           .catch(() => {});
+      };
+      
+      if (!isChatOpen) loadPosts();
+      
+      const handleFocus = () => {
+        if (document.visibilityState === 'visible') loadPosts();
+      };
+      window.addEventListener('focus', handleFocus);
+      document.addEventListener('visibilitychange', handleFocus);
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleFocus);
+      };
+    }
+  }, [isChatOpen, profileData, isBlocked, currentUser]);
+
   const handleSendMessage = async () => {
     if (!profileData?.id) return alert("ID utilisateur introuvable.");
     try {
@@ -204,7 +229,7 @@ export default function PublicProfile() {
         {currentUser && <SocialSidebar />}
         <main className="flex-1 min-w-0 flex items-center justify-center p-4 sm:p-6">
           <div className="text-center p-6 sm:p-10 bg-surface/50 rounded-2xl border border-border border-dashed max-w-sm">
-            <span className="text-4xl sm:text-5xl mb-3 block opacity-50">👻</span>
+            <UnknownIcon className="w-12 h-12 sm:w-16 sm:h-16 mb-3 mx-auto text-text-muted opacity-50" />
             <p className="text-text-muted text-sm sm:text-base font-semibold">{error}</p>
           </div>
         </main>
@@ -245,7 +270,7 @@ export default function PublicProfile() {
                 <label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nouveau mot de passe (laisser vide sinon)</label>
                 <div className="relative flex items-center">
                   <input type={showPassword ? 'text' : 'password'} value={settingPassword} onChange={(e) => setSettingPassword(e.target.value)} placeholder="••••••••" minLength={3} maxLength={20} className="w-full pr-10 rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-text-muted hover:text-text-muted">{showPassword ? "🙈" : "👁️"}</button>
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-text-muted hover:text-text-muted">{showPassword ? <ClosedEyeIcon className="w-4 h-4" /> : <OpenedEyeIcon className="w-4 h-4" />}</button>
                 </div>
               </div>
               <div>
@@ -301,7 +326,7 @@ export default function PublicProfile() {
                 {!currentUser ? (
                   <>
                     <button onClick={() => setShowAuthModal(true)} className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-content hover:bg-primary-hover rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2">
-                      💬 Message
+                      <ChatIcon className="w-4 h-4" /> Message
                     </button>
                     <button onClick={() => setShowAuthModal(true)} className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-surface hover:bg-surface-hover text-text-main border border-border rounded-xl text-xs sm:text-sm font-medium transition-colors flex items-center justify-center gap-2">
                       ➕ Ajouter
@@ -309,7 +334,7 @@ export default function PublicProfile() {
                   </>
                 ) : isMyProfile ? (
                   <button onClick={() => setShowSettingsModal(true)} className="px-5 sm:px-6 py-2 sm:py-2.5 bg-surface-hover hover:bg-border rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
-                    ⚙️ Paramètres
+                    <SettingsIcon className="w-5 h-5 inline mr-1" /> Paramètres
                   </button>
                 ) : isBlocked ? (
                   <button onClick={() => unblockUser(profileData.id)} className="px-5 sm:px-6 py-2 sm:py-2.5 bg-surface-hover hover:bg-emerald-500/20 hover:text-emerald-400 text-text-muted rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
@@ -318,7 +343,7 @@ export default function PublicProfile() {
                 ) : (
                   <>
                     <button onClick={handleSendMessage} className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-content hover:bg-primary-hover rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2">
-                      💬 Message
+                      <ChatIcon className="w-4 h-4" /> Message
                     </button>
                     {isFriend ? (
                       <button onClick={() => removeFriend(profileData.id)} className="px-3.5 sm:px-4 py-2 sm:py-2.5 bg-surface-hover hover:bg-red-500/20 hover:text-red-400 text-text-muted rounded-xl text-xs sm:text-sm font-medium transition-colors border border-border flex items-center justify-center gap-2">
@@ -345,7 +370,7 @@ export default function PublicProfile() {
 
               {isBlocked ? (
                 <div className="text-center p-8 sm:p-10 bg-surface/50 rounded-2xl border border-border border-dashed">
-                  <span className="text-4xl sm:text-5xl mb-3 block opacity-50">🚫</span>
+                  <ForbiddenIcon className="w-12 h-12 sm:w-16 sm:h-16 mb-3 mx-auto text-red-500/50" />
                   <p className="text-text-muted text-sm">Vous avez bloqué cet utilisateur.</p>
                 </div>
               ) : posts.length === 0 ? (
@@ -361,7 +386,7 @@ export default function PublicProfile() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
-                          <span className="text-[10px] uppercase font-bold text-text-muted bg-surface-hover px-2 py-0.5 rounded-md border border-border">{post.isPublic ? '🌐 Public' : '👥 Amis'}</span>
+                          <span className="text-[10px] uppercase font-bold text-text-muted bg-surface-hover px-2 py-0.5 rounded-md border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
                         </div>
                         <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                       </div>
@@ -382,10 +407,10 @@ export default function PublicProfile() {
                     
                     <div className="px-3 sm:px-5 py-2.5 sm:py-3 flex gap-4 sm:gap-8 border-t border-border/50 bg-surface/50">
                       <button onClick={() => currentUser ? toggleLike(post.id) : setShowAuthModal(true)} className={`flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-text-muted hover:text-text-muted'}`}>
-                        {post.likes.length > 0 ? '❤️' : '🤍'} {post._count.likes}
+                        {post.likes.length > 0 ? <LikeIcon className="w-4 h-4 fill-current" /> : <LikeIcon className="w-4 h-4" />} {post._count.likes}
                       </button>
                       <button onClick={() => setOpenComments({...openComments, [post.id]: !openComments[post.id]})} className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium text-text-muted hover:text-text-muted transition-colors">
-                        💬 {post._count.comments} Réponses
+                        <BubbleIcon className="w-4 h-4" /> {post._count.comments} Réponses
                       </button>
                     </div>
 
