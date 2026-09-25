@@ -49,6 +49,7 @@ export class UsersController {
     @Body('email') email?: string,
     @Body('password') password?: string,
     @UploadedFile() file?: Express.Multer.File,
+    @Body('is2faAuthenticated') is2faAuthenticated?: boolean,
   ) {
     const userId = req.user?.userId || req.user?.sub;
     let avatar: string | undefined = undefined;

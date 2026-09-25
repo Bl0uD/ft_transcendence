@@ -48,7 +48,7 @@ export class UsersService {
   // 🔒 MISE À JOUR : Ajout du paramètre `nickname`
   async updateProfile(
     userId: number | string, 
-    data: { username?: string; nickname?: string; email?: string; password?: string; avatar?: string }
+    data: { username?: string; nickname?: string; email?: string; password?: string; avatar?: string, is2faAuthenticated?: boolean }
   ) {
     const numericId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
 
@@ -70,6 +70,10 @@ export class UsersService {
 
       if (data.avatar !== undefined) {
         updateData.avatar = data.avatar;
+      }
+
+      if (data.is2faAuthenticated !== undefined) {
+        updateData.is2faAuthenticated = data.is2faAuthenticated;
       }
 
       // Hachage du mot de passe uniquement s'il est fourni et non vide

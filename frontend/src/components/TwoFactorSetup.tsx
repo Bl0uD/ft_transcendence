@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../api/axios';
+import { useEffect } from 'react';
 
 export default function TwoFactorSetup() {
   const [step, setStep] = useState<'idle' | 'setup'>('idle');
@@ -21,6 +22,21 @@ const handleGenerate = async () => {
       setError(`Erreur : ${backendMessage}`);
     }
   };
+
+const [isAuth, setIsAuth] = useState(null);
+
+useEffect(() => {
+  const checkStatus = async () => {
+    const status = await is2faAuthenticated();
+    setIsAuth(status); // Stocke le true ou false de l'API dans l'état
+  };
+  checkStatus();
+}, []);
+
+  const is2faAuthenticated = async () => {
+    const boolValue = await api.get('auth/2fa/status');
+    return boolValue.data.is2faAuthenticated;
+  }
 
   const handleEnable = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +62,7 @@ const handleGenerate = async () => {
       {success && <p className="text-green-400 text-sm mb-4">{success}</p>}
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
-      {step === 'idle' && (
+      {step === 'idle' && isAuth === false && (
         <div>
           <p className="text-text-muted text-sm mb-4">
             Protégez votre compte en activant l'authentification à double facteur.

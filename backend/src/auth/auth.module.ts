@@ -7,6 +7,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';      
 import { FortyTwoStrategy } from './42auth/forty-two.strategy';
 import { TwoFactorAuthService } from './2fa/two-factor-auth.service';
+import { UsersModule } from 'src/users/users.module';
 
 
 @Global()
@@ -17,6 +18,7 @@ import { TwoFactorAuthService } from './2fa/two-factor-auth.service';
       secret: process.env.JWT_SECRET, 
       signOptions: { expiresIn: '1h' }, 
     }),
+    UsersModule,
   ],
   controllers: [AuthController],
   providers: [

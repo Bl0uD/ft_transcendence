@@ -136,6 +136,7 @@ export class AuthService {
         createdAt: true,
         avatar: true,
         isTwoFactorEnabled: true,
+        is2faAuthenticated: true,
       },
     });
 
@@ -216,7 +217,7 @@ export class AuthService {
       email: user.email, 
       username: user.username,
       nickname: user.nickname, // 🟢 FIX : Ajout ici aussi au cas où
-      isTwoFactorAuthenticated: true 
+      is2faAuthenticated: true,
     };
     
     return {

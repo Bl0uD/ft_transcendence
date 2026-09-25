@@ -5,11 +5,13 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { TwoFactorAuthService } from './2fa/two-factor-auth.service';
 import { JwtTwoFactorGuard } from './2fa/jwt-two-factor.guard';
+import { UsersService } from '../users/users.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly usersService: UsersService,
     private readonly twoFactorAuthService: TwoFactorAuthService
   ) {}
 
@@ -66,6 +68,13 @@ export class AuthController {
     return { qrCode }; 
   }
 
+  @Get('2fa/status')
+  @UseGuards(JwtAuthGuard)
+  async get2faStatus(@Request() req) {
+    const user = await this.authService.getProfile(req.user.userId || req.user.sub);
+    return { is2faAuthenticated: user.is2faAuthenticated };
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('2fa/turn-on')
   @HttpCode(200)
@@ -81,6 +90,7 @@ export class AuthController {
     }
 
     await this.authService.enableTwoFactor(userId);
+    await this.usersService.updateProfile(userId, { is2faAuthenticated: true } as any);
     return { message: '2FA activee avec succes' };
   }
 
