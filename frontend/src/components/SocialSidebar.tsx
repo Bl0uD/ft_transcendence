@@ -118,7 +118,7 @@ export default function SocialSidebar() {
               setTargetUsername(e.target.value);
               FindSuggestions(e.target.value);
             }}
-            className="p-2 border border-border-subtle rounded-lg bg-surface flex-1 text-sm focus:outline-none focus:border-primary text-text-main" 
+            className="p-2 border border-border-subtle rounded-lg bg-surface flex-1 min-w-0 text-sm focus:outline-none focus:border-primary text-text-main" 
           />
           <button 
             type="submit" 
