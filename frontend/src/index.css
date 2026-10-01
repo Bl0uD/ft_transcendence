@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
-@font-face { font-family: 'SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Semibold.otf') format('opentype'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Semibold.otf') format('opentype'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Text'; src: url('./assets/fonts/sf_pro/SF-Pro-Text-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
 
-@font-face { font-family: 'SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Semibold.otf') format('opentype'); font-weight: 600; font-style: normal; font-display: swap; }
-@font-face { font-family: 'SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Semibold.otf') format('opentype'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Custom SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
 
 
 
 @theme {
-  --font-sans: 'SF Pro Text', ui-sans-serif, system-ui, sans-serif;
-  --font-rounded: 'SF Pro Rounded', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Custom SF Pro Text', ui-sans-serif, system-ui, sans-serif;
+  --font-rounded: 'Custom SF Pro Rounded', ui-sans-serif, system-ui, sans-serif;
   --color-bg: var(--theme-bg);
   --color-surface: var(--theme-surface);
   --color-surface-hover: var(--theme-surface-hover);
@@ -66,7 +66,7 @@
 }
 
 [data-color="theme2"] {
-  --color-a: #FDFBF7; /* Crème */
+  --color-a: #fcdd9e; /* Crème */
   --color-b: #C84B31; /* Terre Cuite */
   --color-bg-override: #4A0404; /* Bordeaux */
 }
