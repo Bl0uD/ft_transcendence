@@ -175,7 +175,7 @@ export default function PublicProfile() {
     try {
       const formData = new FormData();
       formData.append('username', settingUsername);
-      if (settingNickname) formData.append('nickname', settingNickname);
+      formData.append('nickname', settingNickname);
       if (settingEmail) formData.append('email', settingEmail);
       if (settingPassword) formData.append('password', settingPassword);
       if (avatarFile) formData.append('avatar', avatarFile);
@@ -279,11 +279,7 @@ export default function PublicProfile() {
                   {[
                     { id: 'theme0', a: '#f8fafc', b: '#020617', name: 'Classique' },
                     { id: 'theme1', a: '#F8F7F4', b: '#0057FF', name: 'Signal Blue' },
-                    { id: 'theme2', a: '#FFF275', b: '#3A0CA3', name: 'Butter Yellow' },
-                    { id: 'theme3', a: '#B6FF2E', b: '#23262F', name: 'Lime Spark' },
-                    { id: 'theme4', a: '#FF4696', b: '#1E1033', name: 'Dragonfruit' },
-                    { id: 'theme5', a: '#F8E7C9', b: '#064E3B', name: 'Emerald Ink' },
-                    { id: 'theme6', a: '#FFD6A5', b: '#6A00F4', name: 'Ultra Violet' }
+                    { id: 'theme5', a: '#F8E7C9', b: '#064E3B', name: 'Emerald Ink' }
                   ].map((t) => (
                     <button 
                       key={t.id} 

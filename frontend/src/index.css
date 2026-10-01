@@ -51,29 +51,9 @@
   --color-b: #0057FF; /* Signal Blue */
 }
 
-[data-color="theme2"] {
-  --color-a: #FFF275; /* Butter Yellow */
-  --color-b: #3A0CA3; /* Royal Iris */
-}
-
-[data-color="theme3"] {
-  --color-a: #B6FF2E; /* Lime Spark */
-  --color-b: #23262F; /* Graphite */
-}
-
-[data-color="theme4"] {
-  --color-a: #FF4696; /* Dragonfruit */
-  --color-b: #1E1033; /* Night Violet */
-}
-
 [data-color="theme5"] {
   --color-a: #F8E7C9; /* Champagne */
   --color-b: #064E3B; /* Emerald Ink */
-}
-
-[data-color="theme6"] {
-  --color-a: #FFD6A5; /* Soft Apricot */
-  --color-b: #6A00F4; /* Ultra Violet */
 }
 
 html, body {
