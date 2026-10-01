@@ -225,7 +225,7 @@ export default function HomeFeed() {
                       <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {const f = e.target.files?.[0]; if(f){setNewPostImage(f); setNewPostPreview(URL.createObjectURL(f));}}} />
                       
                       <div className="relative flex items-center">
-                        <span className="absolute left-2 text-text-muted pointer-events-none">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none flex items-center justify-center">
                           {isPublicPost ? <GlobeIcon className="w-3.5 h-3.5" /> : <FriendsIcon className="w-3.5 h-3.5" />}
                         </span>
                         <select value={isPublicPost ? "public" : "friends"} onChange={(e) => setIsPublicPost(e.target.value === "public")} className="bg-surface border border-border text-xs rounded py-1.5 pl-7 pr-2 text-text-main outline-none appearance-none cursor-pointer">
