@@ -20,7 +20,7 @@
   --color-b: #020617; /* Dark */
 
   /* Map base colors based on mode. Default is Dark. */
-  --theme-base-bg: var(--color-b);
+  --theme-base-bg: var(--color-bg-override, var(--color-b));
   --theme-base-fg: var(--color-a);
 
   /* Automatic derivation of the entire UI palette using color-mix */
@@ -49,6 +49,13 @@
 [data-color="theme1"] {
   --color-a: #F8F7F4; /* Porcelain */
   --color-b: #0057FF; /* Signal Blue */
+  --color-bg-override: #051636; /* Darker blue for dark mode */
+}
+
+[data-color="theme2"] {
+  --color-a: #FDFBF7; /* Crème */
+  --color-b: #D90429; /* Rouge */
+  --color-bg-override: #4A0404; /* Bordeaux */
 }
 
 [data-color="theme5"] {
