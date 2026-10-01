@@ -76,6 +76,14 @@ useEffect(() => {
         </div>
       )}
 
+      {step === 'idle' && isAuth === true && (
+        <div>
+          <p className="text-text-muted text-sm mb-4">
+            La double authentification est déjà activée sur votre compte.
+          </p>
+        </div>
+      )}
+
       {step === 'setup' && (
         <div className="flex flex-col items-center">
           <p className="text-text-muted text-sm mb-4 text-center">
