@@ -248,7 +248,7 @@ export default function PublicProfile() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/70 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
           <div className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-surface border border-border p-5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-2xl custom-scrollbar">
             <button onClick={() => setShowSettingsModal(false)} className="absolute top-4 right-5 text-text-muted hover:text-text-main transition-colors text-xl">✕</button>
-            <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Paramètres du Profil</h2>
+            <h2 className="text-xl sm:text-2xl font-rounded font-bold mb-5 sm:mb-6 text-primary">Paramètres du Profil</h2>
             {settingStatus.message && (
               <div className={`p-3 mb-4 rounded-xl text-xs sm:text-sm border font-medium transition-all ${settingStatus.type === 'error' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-primary/15 text-primary border-primary/40'}`}>
                 {settingStatus.message}
@@ -313,7 +313,7 @@ export default function PublicProfile() {
             <div className="bg-surface rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 border border-border shadow-lg mt-2 sm:mt-4">
               <UserAvatar avatarUrl={profileData?.avatar} username={getDisplayName(profileData)} className="w-24 h-24 sm:w-32 sm:h-32 text-4xl sm:text-5xl border-4 border-border shadow-xl shrink-0" />
               <div className="flex-1 text-center sm:text-left min-w-0">
-                <h1 className="text-2xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-white break-words">{getDisplayName(profileData)}</h1>
+                <h1 className="text-2xl sm:text-4xl font-extrabold text-primary break-words">{getDisplayName(profileData)}</h1>
                 <p className="text-base sm:text-lg text-primary font-medium truncate">@{profileData?.username}</p>
                 {profileData?.createdAt && <p className="text-xs sm:text-sm mt-2 sm:mt-3 text-text-muted">Rejoint le {new Date(profileData.createdAt).toLocaleDateString()}</p>}
               </div>
@@ -382,7 +382,7 @@ export default function PublicProfile() {
                       <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-10 h-10 sm:w-12 sm:h-12 border border-border shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
+                          <span className="font-bold font-rounded text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
                           <span className="text-[10px] uppercase font-bold text-text-muted bg-surface-hover px-2 py-0.5 rounded-md border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
                         </div>
                         <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>

@@ -77,7 +77,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
 
         <button 
           onClick={() => navigate('/')} 
-          className="text-lg sm:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary hover:opacity-80 transition-opacity truncate"
+          className="text-lg sm:text-xl font-rounded font-bold text-primary hover:opacity-80 transition-opacity truncate"
         >
           Transcendence
         </button>

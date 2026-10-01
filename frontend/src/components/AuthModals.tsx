@@ -110,7 +110,7 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
           /* 🟢 CORRECTION ICI : Ajout de onClose={onClose} */
           requires2FA ? <TwoFactorVerify onClose={onClose} /> : (
             <>
-              <div className="text-center"><h2 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Transcendence</h2></div>
+              <div className="text-center"><h2 className="text-2xl sm:text-3xl font-extrabold text-primary">Transcendence</h2></div>
               {loginError && <div className="p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">{loginError}</div>}
               <form className="space-y-4" onSubmit={handleLoginSubmit}>
                 <input type="text" placeholder="Email / Username" required value={identifier} onChange={(e) => setIdentifier(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm text-text-main focus:border-primary focus:outline-none" />
@@ -128,7 +128,7 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
           )
         ) : (
           <>
-            <div className="text-center"><h2 className="text-2xl sm:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">S'inscrire</h2></div>
+            <div className="text-center"><h2 className="text-2xl sm:text-3xl font-extrabold text-primary">S'inscrire</h2></div>
             {regSuccess && <div className="p-3 text-xs sm:text-sm text-primary bg-primary/10 border border-primary/30 rounded-xl">{regSuccess} 🎉</div>}
             {regError && <div className="p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">{regError}</div>}
             <form className="space-y-4" onSubmit={handleRegisterSubmit}>

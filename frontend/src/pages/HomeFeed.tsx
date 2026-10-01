@@ -247,7 +247,7 @@ export default function HomeFeed() {
                   <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm sm:text-base cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
+                      <span className="font-semibold font-rounded text-sm sm:text-base cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
                       <span className="text-[10px] uppercase font-bold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
                     </div>
                     <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
