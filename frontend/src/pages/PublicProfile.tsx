@@ -279,7 +279,7 @@ export default function PublicProfile() {
                   {[
                     { id: 'theme0', a: '#f8fafc', b: '#020617', name: 'Classique' },
                     { id: 'theme1', a: '#F8F7F4', b: '#0057FF', name: 'Signal Blue' },
-                    { id: 'theme2', a: '#FDFBF7', b: '#D90429', name: 'Rouge Velours' },
+                    { id: 'theme2', a: '#FDFBF7', b: '#C84B31', name: 'Terre Cuite' },
                     { id: 'theme5', a: '#F8E7C9', b: '#064E3B', name: 'Emerald Ink' }
                   ].map((t) => (
                     <button 
