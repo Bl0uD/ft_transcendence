@@ -6,7 +6,7 @@ import { useSocket } from '../hooks/useSocket';
 import api from '../api/axios';
 import UserAvatar from './UserAvatar';
 import { streamAIChat } from '../api/aiApi'; 
-import { ChatIcon, RobotIcon, FriendsIcon } from './HeaderIcons';
+import { ChatIcon, RobotIcon, FriendsIcon, MinimizeIcon, MaximizeIcon } from './HeaderIcons';
 
 // --- INTERFACES ---
 interface User { id: number; username: string; nickname?: string | null; avatar?: string | null; }
@@ -358,7 +358,7 @@ export const GlobalChatWidget: React.FC = () => {
                 className="hidden sm:inline-flex text-text-muted hover:text-text-main p-1.5 rounded-lg hover:bg-border/50 text-sm transition-colors"
                 title={isExpanded ? "Réduire la fenêtre" : "Agrandir la fenêtre"}
               >
-                {isExpanded ? "🗗" : "⛶"}
+                {isExpanded ? <MinimizeIcon className="w-4 h-4" /> : <MaximizeIcon className="w-4 h-4" />}
               </button>
               <button 
                 onClick={() => setIsChatOpen(false)} 

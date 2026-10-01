@@ -133,6 +133,44 @@ export function LikeIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
+export function MaximizeIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none"
+      stroke="currentColor"
+      className={className} 
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 9V4h5"/>
+    <path d="M15 4h5v5"/>
+    <path d="M20 15v5h-5"/>
+    <path d="M9 20H4v-5"/>
+  </g>
+    </svg>
+  );
+}
+
+export function MinimizeIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none"
+      stroke="currentColor"
+      className={className} 
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 10h6V4"/>
+    <path d="M20 10h-6V4"/>
+    <path d="M20 14h-6v6"/>
+    <path d="M4 14h6v6"/>
+  </g>
+    </svg>
+  );
+}
+
 export function OpenedEyeIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg 

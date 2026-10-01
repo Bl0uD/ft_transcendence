@@ -75,7 +75,7 @@ for (const file of files) {
   inner = inner.replace(/xmlns:xlink/g, 'xmlnsXlink');
   inner = inner.replace(/style="[^"]*"/g, '');
 
-  if (file === 'bubble.svg' || file === 'globe.svg') {
+  if (file === 'bubble.svg' || file === 'globe.svg' || file === 'minimize.svg' || file === 'maximize.svg') {
     output += `export function ${name}({ className = "w-4 h-4" }: { className?: string }) {
   return (
     <svg 
