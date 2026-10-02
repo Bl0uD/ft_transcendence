@@ -5,6 +5,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import HomeFeed from './pages/HomeFeed';
 import PublicProfile from './pages/PublicProfile';
 import { GlobalChatWidget } from './components/GlobalChatWidget';
+import { Toaster } from 'sonner';
+import { NotificationListener } from './components/NotificationListener';
 
 import { useAuthStore } from './store/authStore';
 import { useThemeStore } from './store/themeStore';
@@ -53,6 +55,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <GlobalChatWidget />
+      <NotificationListener />
+      <Toaster richColors position="top-right" closeButton />
     </BrowserRouter>
   );
 }

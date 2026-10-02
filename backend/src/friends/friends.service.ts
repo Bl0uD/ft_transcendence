@@ -56,6 +56,7 @@ export class FriendsService {
         status: FriendshipStatus.PENDING,
       },
       include: {
+        requester: { select: { id: true, username: true, avatar: true } },
         addressee: { select: { id: true, username: true, avatar: true } },
       },
     });
@@ -63,6 +64,11 @@ export class FriendsService {
     // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(requesterId);
     this.friendsGateway.notifySocialUpdate(addresseeId);
+    this.friendsGateway.notifyNotification(addresseeId, {
+      type: 'info',
+      title: "Demande d'ami",
+      message: `${friendship.requester.username} vous a envoyé une demande d'ami.`,
+    });
 
     return friendship;
   }
@@ -73,6 +79,10 @@ export class FriendsService {
   async acceptRequest(userId: number, requestId: number) {
     const request = await this.prisma.friendship.findUnique({
       where: { id: requestId },
+      include: {
+        requester: { select: { id: true, username: true } },
+        addressee: { select: { id: true, username: true } },
+      },
     });
 
     if (!request) {
@@ -95,6 +105,11 @@ export class FriendsService {
     // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(updated.requesterId);
     this.friendsGateway.notifySocialUpdate(updated.addresseeId);
+    this.friendsGateway.notifyNotification(request.requesterId, {
+      type: 'success',
+      title: 'Ami ajouté',
+      message: `${request.addressee.username} a accepté votre demande d'ami !`,
+    });
 
     // If accepting a request creates a chat room, you should also emit 'rooms_updated'
     // via a ChatGateway notification mechanism if necessary.
