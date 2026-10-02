@@ -1,4 +1,4 @@
-localhost {
+(app_routes) {
     # 1. Fichiers téléversés (Uploads)
     handle /uploads/* {
         root * /usr/share/caddy
@@ -15,7 +15,7 @@ localhost {
         reverse_proxy backend:3000
     }
 
-    # 4. Routes d'authentification vers NestJS (NOUVEAU)
+    # 4. Routes d'authentification vers NestJS
     handle /auth/* {
         reverse_proxy backend:3000
     }
@@ -28,4 +28,17 @@ localhost {
     handle {
         reverse_proxy frontend:5173
     }
+}
+
+localhost {
+    import app_routes
+}
+
+82.64.38.112 {
+    tls internal
+    import app_routes
+}
+
+http:// {
+    import app_routes
 }

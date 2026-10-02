@@ -483,6 +483,26 @@ export const GlobalChatWidget: React.FC = () => {
                       </div>
                     );
                   })}
+
+                  {typingUsers.length > 0 && (
+                    <div className="flex w-full justify-start mt-1 mb-2">
+                      <div className="flex gap-2 max-w-[90%] sm:max-w-[85%] flex-row">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-[10px] sm:text-xs text-text-muted font-medium mb-1 pl-1 font-rounded truncate">
+                            {typingUsers.map(u => u.name).join(', ')} {typingUsers.length > 1 ? 'sont' : 'est'} en train d'écrire...
+                          </span>
+                          <div className="bg-surface border border-border px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl rounded-tl-none min-w-0 shadow-sm relative text-text-main text-xs sm:text-sm inline-flex w-fit">
+                            <div className="flex gap-1 items-center h-4">
+                              <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce"></span>
+                              <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                              <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   
                   {isAiLoading && (
                     <div className="flex w-full justify-start mt-2">
@@ -494,14 +514,7 @@ export const GlobalChatWidget: React.FC = () => {
                 </div>
                 
                 
-                {/* INDICATEUR DE FRAPPE */}
-                {typingUsers && typingUsers.length > 0 && (
-                  <div className="absolute bottom-[4.5rem] sm:bottom-[4.5rem] left-3 z-10 flex gap-2">
-                    <div className="bg-surface border border-border-subtle p-2 px-3 rounded-2xl rounded-bl-none text-text-muted text-xs italic shadow-md animate-pulse">
-                      Quelqu'un écrit...
-                    </div>
-                  </div>
-                )}
+                
                 
                 <form onSubmit={handleSendChatMessage} className="p-3 bg-surface border-t border-border flex gap-2 items-center shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
                   <input 
