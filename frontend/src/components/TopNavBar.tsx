@@ -5,7 +5,8 @@ import { useSocialStore } from '../store/socialStore';
 import { useThemeStore } from '../store/themeStore';
 import UserAvatar from './UserAvatar';
 import api from '../api/axios';
-import { SearchIcon, DarkIcon, LightIcon, SidebarIcon } from './HeaderIcons';
+import { SearchIcon, DarkIcon, LightIcon, SidebarIcon, BellIcon } from './HeaderIcons';
+import { toast } from 'sonner';
 
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
   if (!account || !account.username) return 'Visiteur';
@@ -123,6 +124,28 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
       {/* DROITE : Actions, Recherche Mobile, Profil */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         
+        {/* BOUTON NOTIFICATIONS */}
+        {'Notification' in window && Notification.permission !== 'granted' && (
+          <button
+            onClick={async () => {
+              try {
+                const perm = await Notification.requestPermission();
+                if (perm === 'granted') {
+                  toast.success('Notifications système activées !');
+                } else {
+                  toast.error('Notifications refusées.');
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            className="p-2 text-text-muted hover:text-primary bg-bg/50 hover:bg-surface rounded-lg text-sm transition-colors flex items-center justify-center animate-pulse"
+            title="Activer les notifications système"
+          >
+            <BellIcon className="w-4 h-4" />
+          </button>
+        )}
+
         {/* BOUTON THEME SOMBRE/CLAIR */}
         <button
           onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}

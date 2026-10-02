@@ -107,9 +107,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (channel && channel.members) {
       for (const member of channel.members) {
         // 🟢 On ping la room personnelle du membre (ex: "user_45")
-        // L'IA ping TOUT le monde, toi compris ! (React se charge d'ignorer les doublons visuels)
         this.server.to(`user_${member.userId}`).emit('receive_message', savedMessage);
         this.server.to(`user_${member.userId}`).emit('rooms_updated');
+        
+        // 3. Notification Système (pour les destinataires uniquement, pas l'auteur)
+        if (member.userId !== authorId) {
+          const authorName = savedMessage.author?.username || 'Nouveau message';
+          this.server.to(`user_${member.userId}`).emit('notification', {
+            type: 'info',
+            title: channel.type === 'DIRECT' ? authorName : `${channel.name || 'Salon'} - ${authorName}`,
+            message: savedMessage.content.substring(0, 50) + (savedMessage.content.length > 50 ? '...' : ''),
+          });
+        }
       }
     }
   }
