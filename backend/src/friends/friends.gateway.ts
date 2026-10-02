@@ -118,13 +118,4 @@ export class FriendsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   notifySocialUpdate(userId: number) {
     this.server.to(String(userId)).emit('socialUpdate', { userId });
   }
-
-  notifyNotification(userId: number, notification: {
-    type?: 'info' | 'success' | 'warning' | 'error';
-    title?: string;
-    message: string;
-    actionUrl?: string;
-  }) {
-    this.server.to(String(userId)).emit('notification', notification);
-  }
 }
