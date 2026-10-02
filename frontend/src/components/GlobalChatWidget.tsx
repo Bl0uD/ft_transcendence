@@ -41,6 +41,12 @@ export const GlobalChatWidget: React.FC = () => {
   
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [typingUsers, setTypingUsers] = useState<number[]>([]);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setTypingUsers([]);
+  }, [activeRoom]);
   const [chatInput, setChatInput] = useState('');
   
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -142,15 +148,36 @@ export const GlobalChatWidget: React.FC = () => {
       return; 
     }
 
+    
     const handleHistory = (hist: Message[]) => { if (Array.isArray(hist)) setMessages(hist); };
     const handleReceiveMessage = (msg: Message) => { setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); };
     
+    const handleUserTyping = (data: { userId: number, channelId: number }) => {
+      if (data.userId === user?.id) return;
+      if (data.channelId === activeRoom) {
+        setTypingUsers((prev) => prev.includes(data.userId) ? prev : [...prev, data.userId]);
+      }
+    };
+    const handleUserStoppedTyping = (data: { userId: number, channelId: number }) => {
+      if (data.userId === user?.id) return;
+      if (data.channelId === activeRoom) {
+        setTypingUsers((prev) => prev.filter(id => id !== data.userId));
+      }
+    };
+    
     socket.on('load_history', handleHistory);
     socket.on('receive_message', handleReceiveMessage); 
+    socket.on('user_typing', handleUserTyping);
+    socket.on('user_stopped_typing', handleUserStoppedTyping);
     
     socket.emit('joinChannel', { channelId: activeRoom });
     
-    return () => { socket.off('load_history', handleHistory); socket.off('receive_message', handleReceiveMessage); };
+    return () => { 
+      socket.off('load_history', handleHistory); 
+      socket.off('receive_message', handleReceiveMessage); 
+      socket.off('user_typing', handleUserTyping);
+      socket.off('user_stopped_typing', handleUserStoppedTyping);
+    };
   }, [socket, activeRoom, isConnected, user]);
 
   // 🟢 On fait défiler uniquement le conteneur des messages pour éviter tout décalage du viewport ou disparition du haut
@@ -175,6 +202,8 @@ export const GlobalChatWidget: React.FC = () => {
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     const content = chatInput.trim();
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    if (activeRoom !== null && activeRoom > 0 && socket) socket.emit('stop_typing', { channelId: activeRoom });
     if (!content || !isConnected || !socket || activeRoom === null) return;
 
     const currentRoom = rooms.find(r => r.id === activeRoom);
@@ -464,11 +493,30 @@ export const GlobalChatWidget: React.FC = () => {
                   )}
                 </div>
                 
+                
+                {/* INDICATEUR DE FRAPPE */}
+                {typingUsers && typingUsers.length > 0 && (
+                  <div className="absolute bottom-[4.5rem] sm:bottom-[4.5rem] left-3 z-10 flex gap-2">
+                    <div className="bg-surface border border-border-subtle p-2 px-3 rounded-2xl rounded-bl-none text-text-muted text-xs italic shadow-md animate-pulse">
+                      Quelqu'un écrit...
+                    </div>
+                  </div>
+                )}
+                
                 <form onSubmit={handleSendChatMessage} className="p-3 bg-surface border-t border-border flex gap-2 items-center shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
                   <input 
                     type="text" 
                     value={chatInput} 
-                    onChange={(e) => setChatInput(e.target.value)} 
+                    onChange={(e) => {
+                      setChatInput(e.target.value);
+                      if (socket && activeRoom && activeRoom > 0) {
+                        socket.emit('typing', { channelId: activeRoom });
+                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                        typingTimeoutRef.current = setTimeout(() => {
+                          socket.emit('stop_typing', { channelId: activeRoom });
+                        }, 2000);
+                      }
+                    }} 
                     placeholder={isCurrentRoomAi && aiCooldown > 0 ? `Attendez ${aiCooldown}s...` : "Écrire un message..."} 
                     disabled={isCurrentRoomAi && (isAiLoading || aiCooldown > 0)}
                     className="flex-1 min-w-0 bg-bg border border-border rounded-full px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-primary disabled:opacity-50 text-text-main" 
