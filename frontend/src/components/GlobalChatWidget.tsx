@@ -41,7 +41,7 @@ export const GlobalChatWidget: React.FC = () => {
   
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [typingUsers, setTypingUsers] = useState<number[]>([]);
+  const [typingUsers, setTypingUsers] = useState<{id: number, name: string}[]>([]);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -152,16 +152,16 @@ export const GlobalChatWidget: React.FC = () => {
     const handleHistory = (hist: Message[]) => { if (Array.isArray(hist)) setMessages(hist); };
     const handleReceiveMessage = (msg: Message) => { setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); };
     
-    const handleUserTyping = (data: { userId: number, channelId: number }) => {
+    const handleUserTyping = (data: { userId: number, channelId: number, username?: string }) => {
       if (data.userId === user?.id) return;
       if (data.channelId === activeRoom) {
-        setTypingUsers((prev) => prev.includes(data.userId) ? prev : [...prev, data.userId]);
+        setTypingUsers((prev) => prev.some(u => u.id === data.userId) ? prev : [...prev, {id: data.userId, name: data.username || 'Un ami'}]);
       }
     };
     const handleUserStoppedTyping = (data: { userId: number, channelId: number }) => {
       if (data.userId === user?.id) return;
       if (data.channelId === activeRoom) {
-        setTypingUsers((prev) => prev.filter(id => id !== data.userId));
+        setTypingUsers((prev) => prev.filter(u => u.id !== data.userId));
       }
     };
     
@@ -510,7 +510,7 @@ export const GlobalChatWidget: React.FC = () => {
                     onChange={(e) => {
                       setChatInput(e.target.value);
                       if (socket && activeRoom && activeRoom > 0) {
-                        socket.emit('typing', { channelId: activeRoom });
+                        socket.emit('typing', { channelId: activeRoom, username: user ? getDisplayName(user) : 'Un utilisateur' });
                         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
                         typingTimeoutRef.current = setTimeout(() => {
                           socket.emit('stop_typing', { channelId: activeRoom });

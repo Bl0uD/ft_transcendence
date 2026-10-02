@@ -142,18 +142,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('typing')
   async handleTyping(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { channelId: number },
+    @MessageBody() payload: { channelId: number, username?: string },
   ) {
     const userId = client.data.user?.sub;
     const channelId = Number(payload?.channelId);
     if (!userId || isNaN(channelId)) return;
-    client.to(String(channelId)).emit('user_typing', { userId, channelId });
+    client.to(String(channelId)).emit('user_typing', { userId, channelId, username: payload.username || 'Un utilisateur' });
   }
 
   @SubscribeMessage('stop_typing')
   async handleStopTyping(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { channelId: number },
+    @MessageBody() payload: { channelId: number, username?: string },
   ) {
     const userId = client.data.user?.sub;
     const channelId = Number(payload?.channelId);
