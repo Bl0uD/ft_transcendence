@@ -13,7 +13,8 @@ import { PhotoIcon, GlobeIcon, FriendsIcon, LikeIcon, BubbleIcon } from '../comp
 
 interface Comment { id: number; content: string; createdAt: string; user: any; }
 interface Post {
-  id: number; content: string; imageUrl: string | null; isPublic: boolean; createdAt: string;
+  id: number; content: string; imageUrl: string | null; isPublic: boolean;
+  isHidden?: boolean; createdAt: string;
   author: any; likes: { id: number }[]; comments: Comment[];
   _count: { likes: number; comments: number; };
 }
@@ -39,7 +40,33 @@ export default function HomeFeed() {
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   const [posts, setPosts] = useState<Post[]>([]);
-  const [newPostContent, setNewPostContent] = useState('');
+
+  const [menuOpenPostId, setMenuOpenPostId] = useState<number | null>(null);
+
+  const deletePost = async (postId: number) => {
+    if (!confirm("Voulez-vous vraiment supprimer cette publication ?")) return;
+    try {
+      await api.delete(`/posts/${postId}`);
+      setPosts(posts.filter(p => p.id !== postId));
+      setMenuOpenPostId(null);
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la suppression.");
+    }
+  };
+
+  const updatePostVisibility = async (postId: number, isPublic: boolean, isHidden: boolean) => {
+    try {
+      const { data } = await api.patch(`/posts/${postId}/visibility`, { isPublic, isHidden });
+      setPosts(posts.map(p => p.id === postId ? data : p));
+      setMenuOpenPostId(null);
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la mise à jour.");
+    }
+  };
+
+    const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
   const [newPostPreview, setNewPostPreview] = useState<string | null>(null);
   const [isPublicPost, setIsPublicPost] = useState(true);
@@ -242,7 +269,7 @@ export default function HomeFeed() {
 
             {/* Liste des Posts */}
             {visiblePosts.map((post) => (
-              <div key={post.id} className="w-full bg-surface-hover rounded-xl border border-border shadow-sm flex flex-col">
+              <div key={post.id} className={`w-full bg-surface-hover rounded-xl border border-border shadow-sm flex flex-col ${post.isHidden ? "opacity-60 saturate-50" : ""}`}>
                 <div className="p-3 sm:p-4 flex items-center gap-3">
                   <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
                   <div className="min-w-0 flex-1">
@@ -252,6 +279,29 @@ export default function HomeFeed() {
                     </div>
                     <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                   </div>
+
+                  {post.author.id === user?.id && (
+                    <div className="relative ml-auto self-start" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => setMenuOpenPostId(menuOpenPostId === post.id ? null : post.id)} className="p-1.5 text-text-muted hover:text-text-main rounded-lg hover:bg-surface transition-colors">
+                        ⋮
+                      </button>
+                      {menuOpenPostId === post.id && (
+                        <div className="absolute right-0 mt-1 w-48 bg-surface-hover border border-border rounded-lg shadow-xl z-20 py-1 overflow-hidden">
+                          <button onClick={() => updatePostVisibility(post.id, !post.isPublic, post.isHidden || false)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-text-main flex items-center gap-2 font-medium">
+                            {post.isPublic ? <FriendsIcon className="w-4 h-4"/> : <GlobeIcon className="w-4 h-4"/>} 
+                            Passer en {post.isPublic ? 'Amis' : 'Public'}
+                          </button>
+                          <button onClick={() => updatePostVisibility(post.id, post.isPublic, !post.isHidden)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-text-main flex items-center gap-2 font-medium">
+                            {post.isHidden ? "👁️ Rendre visible" : "🙈 Masquer du fil"}
+                          </button>
+                          <div className="h-px bg-border my-1"></div>
+                          <button onClick={() => deletePost(post.id)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-red-500 flex items-center gap-2 font-medium">
+                            🗑️ Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {post.content && <div className="px-3 sm:px-4 pb-3 whitespace-pre-wrap text-xs sm:text-sm break-words">{post.content}</div>}
                 {post.imageUrl && (

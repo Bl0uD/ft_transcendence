@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile, Delete, Patch } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -82,5 +82,22 @@ export class PostsController {
   ) {
     const userId = this.extractUserId(req);
     return this.postsService.addComment(Number(userId), postId, content);
+  }
+
+  @Delete(':id')
+  async deletePost(@Req() req: any, @Param('id', ParseIntPipe) postId: number) {
+    const userId = this.extractUserId(req);
+    return this.postsService.deletePost(Number(userId), postId);
+  }
+
+  @Patch(':id/visibility')
+  async updateVisibility(
+    @Req() req: any,
+    @Param('id', ParseIntPipe) postId: number,
+    @Body('isPublic') isPublic?: boolean,
+    @Body('isHidden') isHidden?: boolean,
+  ) {
+    const userId = this.extractUserId(req);
+    return this.postsService.updateVisibility(Number(userId), postId, { isPublic, isHidden });
   }
 }

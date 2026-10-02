@@ -34,7 +34,7 @@ export class PostsService {
   async getFeed(userId?: number) {
     if (!userId) {
       return this.prisma.post.findMany({
-        where: { isPublic: true },
+        where: { isPublic: true, isHidden: false },
         orderBy: { createdAt: 'desc' },
         include: this.getPostIncludes(-1), // -1 pour qu'un visiteur n'ait jamais de posts "likés"
       });
@@ -60,9 +60,9 @@ export class PostsService {
       where: {
         authorId: { notIn: blockedIds }, // 👈 LA MAGIE EST ICI
         OR: [
-          { isPublic: true },
+          { isPublic: true, isHidden: false },
           { authorId: userId },
-          { authorId: { in: friendIds } },
+          { authorId: { in: friendIds }, isHidden: false },
         ],
       },
       orderBy: { createdAt: 'desc' },
@@ -84,7 +84,7 @@ export class PostsService {
     // 2. Un visiteur non connecté regarde le profil -> Il ne voit que les posts publics
     if (!requesterId) {
       return this.prisma.post.findMany({
-        where: { authorId: targetUserId, isPublic: true },
+        where: { authorId: targetUserId, isPublic: true, isHidden: false },
         orderBy: { createdAt: 'desc' },
         include: this.getPostIncludes(-1),
       });
@@ -112,7 +112,7 @@ export class PostsService {
         authorId: targetUserId,
         // Si ami, on ne filtre pas sur isPublic (donc il verra aussi les posts privés). 
         // Sinon, on impose isPublic: true.
-        isPublic: isFriend ? undefined : true 
+        isPublic: isFriend ? undefined : true, isHidden: false 
       },
       orderBy: { createdAt: 'desc' },
       include: this.getPostIncludes(requesterId),
@@ -141,5 +141,31 @@ export class PostsService {
       data: { content, userId, postId },
       include: { user: { select: { id: true, username: true, avatar: true } } },
     });
+  }
+
+  async deletePost(userId: number, postId: number) {
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) throw new NotFoundException('Post introuvable');
+    if (post.authorId !== userId) throw new ForbiddenException("Vous n'êtes pas l'auteur de ce post.");
+    
+    await this.prisma.post.delete({ where: { id: postId } });
+    return { success: true };
+  }
+
+  async updateVisibility(userId: number, postId: number, data: { isPublic?: boolean, isHidden?: boolean }) {
+    const post = await this.prisma.post.findUnique({ where: { id: postId } });
+    if (!post) throw new NotFoundException('Post introuvable');
+    if (post.authorId !== userId) throw new ForbiddenException("Vous n'êtes pas l'auteur de ce post.");
+    
+    const updateData: any = {};
+    if (data.isPublic !== undefined) updateData.isPublic = data.isPublic;
+    if (data.isHidden !== undefined) updateData.isHidden = data.isHidden;
+
+    const updatedPost = await this.prisma.post.update({
+      where: { id: postId },
+      data: updateData,
+      include: this.getPostIncludes(userId)
+    });
+    return updatedPost;
   }
 }

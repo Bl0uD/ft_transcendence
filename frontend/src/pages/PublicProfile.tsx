@@ -15,7 +15,8 @@ import { GlobeIcon, FriendsIcon, LikeIcon, BubbleIcon, ChatIcon, ClosedEyeIcon, 
 interface User { id: number; username: string; nickname?: string | null; avatar?: string | null; }
 interface Comment { id: number; content: string; createdAt: string; user: User; }
 interface Post {
-  id: number; content: string; imageUrl: string | null; isPublic: boolean; createdAt: string;
+  id: number; content: string; imageUrl: string | null; isPublic: boolean;
+  isHidden?: boolean; createdAt: string;
   author: User; likes: { id: number }[]; comments: Comment[];
   _count: { likes: number; comments: number; };
 }
@@ -41,7 +42,33 @@ export default function PublicProfile() {
   const [error, setError] = useState('');
 
   const [posts, setPosts] = useState<Post[]>([]);
-  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
+
+  const [menuOpenPostId, setMenuOpenPostId] = useState<number | null>(null);
+
+  const deletePost = async (postId: number) => {
+    if (!confirm("Voulez-vous vraiment supprimer cette publication ?")) return;
+    try {
+      await api.delete(`/posts/${postId}`);
+      setPosts(posts.filter(p => p.id !== postId));
+      setMenuOpenPostId(null);
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la suppression.");
+    }
+  };
+
+  const updatePostVisibility = async (postId: number, isPublic: boolean, isHidden: boolean) => {
+    try {
+      const { data } = await api.patch(`/posts/${postId}/visibility`, { isPublic, isHidden });
+      setPosts(posts.map(p => p.id === postId ? data : p));
+      setMenuOpenPostId(null);
+    } catch (error) {
+      console.error(error);
+      alert("Erreur lors de la mise à jour.");
+    }
+  };
+
+    const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
   const [openComments, setOpenComments] = useState<Record<number, boolean>>({});
 
   const isMyProfile = currentUser?.username === username;
@@ -387,7 +414,30 @@ export default function PublicProfile() {
                         </div>
                         <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                       </div>
+
+                  {post.author.id === currentUser?.id && (
+                    <div className="relative ml-auto self-start" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => setMenuOpenPostId(menuOpenPostId === post.id ? null : post.id)} className="p-1.5 text-text-muted hover:text-text-main rounded-lg hover:bg-surface transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                      </button>
+                      {menuOpenPostId === post.id && (
+                        <div className="absolute right-0 mt-1 w-56 bg-surface-hover border border-border rounded-lg shadow-xl z-20 py-1 overflow-hidden">
+                          <button onClick={() => updatePostVisibility(post.id, !post.isPublic, post.isHidden || false)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-text-main flex items-center gap-2 font-medium">
+                            {post.isPublic ? <FriendsIcon className="w-4 h-4"/> : <GlobeIcon className="w-4 h-4"/>} 
+                            Passer en {post.isPublic ? 'Amis' : 'Public'}
+                          </button>
+                          <button onClick={() => updatePostVisibility(post.id, post.isPublic, !post.isHidden)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-text-main flex items-center gap-2 font-medium">
+                            {post.isHidden ? "👁️ Rendre visible" : "🙈 Masquer du profil"}
+                          </button>
+                          <div className="h-px bg-border my-1"></div>
+                          <button onClick={() => deletePost(post.id)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-red-500 flex items-center gap-2 font-medium">
+                            🗑️ Supprimer
+                          </button>
+                        </div>
+                      )}
                     </div>
+                  )}
+                </div>
 
                     {post.content && <div className="px-3 sm:px-5 pb-3 sm:pb-4 text-text-main whitespace-pre-wrap leading-relaxed text-xs sm:text-sm break-words">{post.content}</div>}
                     
