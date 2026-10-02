@@ -185,7 +185,7 @@ export const GlobalChatWidget: React.FC = () => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, isChatOpen, isAiLoading]);
+  }, [messages, isChatOpen, isAiLoading, typingUsers]);
 
   // 🟢 NOUVEAU : Fonction pour basculer de salon quand on clique sur le Toggle
   const toggleAiProvider = () => {
