@@ -9,7 +9,7 @@ import UserAvatar from '../components/UserAvatar';
 import SocialSidebar from '../components/SocialSidebar';
 import TopNavBar from '../components/TopNavBar';
 import AuthModals from '../components/AuthModals';
-import { PhotoIcon, GlobeIcon, FriendsIcon, LikeIcon, BubbleIcon } from '../components/HeaderIcons';
+import { PhotoIcon, GlobeIcon, FriendsIcon, LikeIcon, BubbleIcon, OpenedEyeIcon, ClosedEyeIcon } from '../components/HeaderIcons';
 
 interface Comment { id: number; content: string; createdAt: string; user: any; }
 interface Post {
@@ -292,11 +292,11 @@ export default function HomeFeed() {
                             Passer en {post.isPublic ? 'Amis' : 'Public'}
                           </button>
                           <button onClick={() => updatePostVisibility(post.id, post.isPublic, !post.isHidden)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-text-main flex items-center gap-2 font-medium">
-                            {post.isHidden ? "👁️ Rendre visible" : "🙈 Masquer du fil"}
+                            {post.isHidden ? <><OpenedEyeIcon className="w-4 h-4"/> Rendre visible</> : <><ClosedEyeIcon className="w-4 h-4"/> Masquer du profil</>}
                           </button>
                           <div className="h-px bg-border my-1"></div>
                           <button onClick={() => deletePost(post.id)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-red-500 flex items-center gap-2 font-medium">
-                            🗑️ Supprimer
+                            <span className="font-bold text-lg leading-none mt-[-2px]">✕</span> Supprimer
                           </button>
                         </div>
                       )}
@@ -344,7 +344,7 @@ export default function HomeFeed() {
                     {user ? (
                       <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2 items-center">
                         <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-7 h-7 sm:w-8 sm:h-8 text-xs border border-border shrink-0" />
-                        <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-surface-hover border border-border-subtle rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm focus:outline-none focus:border-primary" />
+                        <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 min-w-0 bg-surface-hover border border-border-subtle rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm focus:outline-none focus:border-primary" />
                         <button type="submit" disabled={!commentInputs[post.id]?.trim()} className="bg-primary text-primary-content w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-primary-hover text-xs">
                           ➤
                         </button>

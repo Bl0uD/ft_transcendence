@@ -427,11 +427,11 @@ export default function PublicProfile() {
                             Passer en {post.isPublic ? 'Amis' : 'Public'}
                           </button>
                           <button onClick={() => updatePostVisibility(post.id, post.isPublic, !post.isHidden)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-text-main flex items-center gap-2 font-medium">
-                            {post.isHidden ? "👁️ Rendre visible" : "🙈 Masquer du profil"}
+                            {post.isHidden ? <><OpenedEyeIcon className="w-4 h-4"/> Rendre visible</> : <><ClosedEyeIcon className="w-4 h-4"/> Masquer du profil</>}
                           </button>
                           <div className="h-px bg-border my-1"></div>
                           <button onClick={() => deletePost(post.id)} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface text-red-500 flex items-center gap-2 font-medium">
-                            🗑️ Supprimer
+                            <span className="font-bold text-lg leading-none mt-[-2px]">✕</span> Supprimer
                           </button>
                         </div>
                       )}
