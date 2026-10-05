@@ -205,23 +205,38 @@ export class AuthService {
     });
   }
 
-  async loginWith2fa(userId: number) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    
+async loginWith2fa(userId: number) {
+    // 1. On récupère l'utilisateur pour avoir toutes ses infos
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     if (!user) {
       throw new NotFoundException('Utilisateur non trouvé');
     }
     
+    // 2. On crée le payload parfait avec le fameux sceau 2FA validé !
     const payload = { 
       sub: user.id, 
       email: user.email, 
       username: user.username,
-      nickname: user.nickname, // 🟢 FIX : Ajout ici aussi au cas où
-      is2faAuthenticated: true,
+      nickname: user.nickname, 
+      avatar: user.avatar,
+      isTwoFactorAuthenticated: true, // 🚀 C'est lui qui ouvre les portes du Guard
     };
     
+    // 3. On renvoie le token ET le profil, exactement comme le login classique
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: await this.jwtService.signAsync(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        nickname: user.nickname,
+        createdAt: user.createdAt,
+        avatar: user.avatar,
+        isTwoFactorEnabled: user.isTwoFactorEnabled,
+      }
     };
   }
 }

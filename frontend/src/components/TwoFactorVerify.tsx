@@ -4,7 +4,7 @@ import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 
 interface TwoFactorVerifyProps {
-  onClose?: () => void; // 🟢 On ajoute la prop onClose
+  onClose?: () => void;
 }
 
 export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
@@ -13,7 +13,7 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   
-  const { login, setRequires2FA } = useAuthStore();
+  const { login, logout } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,17 +21,33 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
     setLoading(true);
 
     try {
+      // 1. On envoie le code 
       const response = await api.post('/auth/2fa/authenticate', { 
         twoFactorCode: code 
       });
-
-      login(response.data.user, response.data.access_token);
       
-      // 🟢 On ferme la modale si la fonction est fournie
+      const token = response.data.access_token;
+      let userData = response.data.user;
+
+      // On écrase l'ancien token dans le navigateur
+      localStorage.setItem('access_token', token);
+
+      // 2. 🚀 BLINDAGE : On force le header Authorization avec le nouveau token 
+      // pour garantir que la requête profil ne sera pas rejetée
+      if (!userData) {
+        const profileRes = await api.get('/auth/profile', {
+          headers: { Authorization: `Bearer ${token}` } 
+        });
+        userData = profileRes.data;
+      }
+
+      // 3. On valide la session pour le Store global
+      login(userData, token, true);
+      
       if (onClose) {
         onClose();
       } else {
-        navigate('/'); // Fallback au cas où
+        navigate('/');
       }
       
     } catch (err: any) {
@@ -42,7 +58,6 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
   };
 
   return (
-    // 🟢 On retire les bordures/fonds (bg-surface, border, shadow) car la modale parent s'en charge déjà !
     <div className="w-full space-y-6 text-text-main">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-text-main">Double Authentification</h2>
@@ -83,7 +98,11 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
           
           <button
             type="button"
-            onClick={() => setRequires2FA(false)}
+            onClick={() => {
+              localStorage.removeItem('access_token');
+              logout();
+              if (onClose) onClose();
+            }}
             className="text-sm text-text-muted hover:text-text-main transition-colors"
           >
             Annuler et retourner à la connexion

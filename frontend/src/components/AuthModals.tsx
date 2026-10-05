@@ -11,17 +11,14 @@ interface AuthModalsProps {
 
 export default function AuthModals({ isOpen, onClose, initialView = 'login' }: AuthModalsProps) {
   const [isLoginView, setIsLoginView] = useState(initialView === 'login');
+  
+  const { login: loginGlobal, requires2FA, logout } = useAuthStore();
 
-  const loginGlobal = useAuthStore((state: any) => state.login);
-  const requires2FA = useAuthStore((state: any) => state.requires2FA);
-
-  // --- ÉTATS CONNEXION ---
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isLoginLoading, setIsLoginLoading] = useState(false);
-
-  // --- ÉTATS INSCRIPTION ---
+  
   const [regEmail, setRegEmail] = useState('');
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -29,14 +26,16 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegLoading, setIsRegLoading] = useState(false);
 
-  // 🟢 Permet de basculer sur la bonne vue dès l'ouverture
   useEffect(() => {
-    if (isOpen) {
-      setIsLoginView(initialView === 'login');
-    }
+    if (isOpen) setIsLoginView(initialView === 'login');
   }, [isOpen, initialView]);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    if (requires2FA) {
+      logout(); 
+    }
+    onClose();
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setIsLoginLoading(true);
@@ -45,7 +44,6 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
       localStorage.setItem('access_token', response.data.access_token);
       loginGlobal(response.data.user, response.data.access_token);
       
-      // On ne ferme la modale QUE SI la 2FA n'est pas requise
       if (!response.data.user.isTwoFactorEnabled) {
         onClose();
       }
@@ -64,7 +62,6 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
     setRegError('');
     
     try {
-      // 1. Création du compte
       await api.post('/auth/register', { 
         email: regEmail, 
         username: regUsername, 
@@ -73,23 +70,19 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
       
       setRegSuccess('Succès ! Connexion en cours...');
 
-      // 2. Connexion automatique immédiate
       const loginResponse = await api.post('/auth/login', { 
         identifier: regUsername, 
         password: regPassword 
       });
 
-      // 3. Sauvegarde du token et mise à jour de l'état global
       localStorage.setItem('access_token', loginResponse.data.access_token);
       loginGlobal(loginResponse.data.user, loginResponse.data.access_token);
       
-      // 4. Nettoyage des champs
       setRegEmail(''); 
       setRegUsername(''); 
       setRegPassword(''); 
       setRegSuccess('');
 
-      // 5. Fermeture de la modale (sauf si la 2FA est requise)
       if (!loginResponse.data.user.isTwoFactorEnabled) {
         onClose();
       }
@@ -101,13 +94,15 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
     }
   };
 
+  // 🚀 LA LIGNE MAGIQUE QUI RÉSOUT TOUT TON PROBLÈME EST ICI :
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
       <div className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto space-y-5 sm:space-y-6 bg-surface/95 p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-border shadow-2xl custom-scrollbar">
-        <button onClick={onClose} className="absolute top-4 right-5 text-text-muted hover:text-text-main transition-colors text-xl">✕</button>
+        <button onClick={handleClose} className="absolute top-4 right-5 text-text-muted hover:text-text-main transition-colors text-xl">✕</button>
         
         {isLoginView ? (
-          /* 🟢 CORRECTION ICI : Ajout de onClose={onClose} */
           requires2FA ? <TwoFactorVerify onClose={onClose} /> : (
             <>
               <div className="text-center"><h2 className="text-2xl sm:text-3xl font-extrabold text-primary">Transcendence</h2></div>

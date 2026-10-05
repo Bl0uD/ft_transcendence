@@ -18,8 +18,15 @@ interface TopNavBarProps {
 
 export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
   const navigate = useNavigate();
+  
+  // 🟢 On récupère requires2FA depuis le store
   const user = useAuthStore((state: any) => state.user);
+  const requires2FA = useAuthStore((state: any) => state.requires2FA); 
   const logout = useAuthStore((state: any) => state.logout);
+  
+  // 🛡️ BARRICADE VISUELLE : Si la 2FA est requise, la navbar te considère comme Visiteur
+  const effectiveUser = requires2FA ? null : user;
+
   const { pendingRequests, isSocialDrawerOpen, setIsSocialDrawerOpen } = useSocialStore();
   const { mode, setMode } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -51,15 +58,15 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
       console.error("Erreur lors de la recherche des utilisateurs :", err);
       setSuggestions([]);
     }
-};
+  };
 
   return (
     <nav className="fixed top-0 left-0 w-full max-w-full h-16 bg-surface-hover border-b border-border z-50 flex items-center justify-between px-3 sm:px-6 shadow-md">
       
       {/* GAUCHE : Social Mobile + Logo + Accueil */}
       <div className="flex items-center gap-2 sm:gap-6 min-w-0">
-        {/* BOUTON SOCIAL MOBILE (Affiché uniquement pour utilisateur connecté) */}
-        {user && (
+        {/* BOUTON SOCIAL MOBILE (Affiché uniquement si effectiveUser est vrai) */}
+        {effectiveUser && (
           <button
             type="button"
             onClick={() => setIsSocialDrawerOpen(!isSocialDrawerOpen)}
@@ -84,14 +91,13 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
 
         {/* BARRE DE RECHERCHE DESKTOP */}
         <form onSubmit={handleSearch} className="hidden sm:flex items-center">
-          {/* Le relative englobe maintenant TOUT : l'input ET la liste */}
           <div className="relative">
             <input
               type="text"
               placeholder="Chercher un pseudo..."
-              value={searchQuery} // On utilise searchQuery
+              value={searchQuery}
               onChange={(e) => {
-                setSearchQuery(e.target.value); // On met à jour searchQuery et plus targetUsername
+                setSearchQuery(e.target.value);
                 FindSuggestions(e.target.value);
               }}
               className="bg-surface border border-border-subtle rounded-full py-1.5 pl-4 pr-10 text-sm text-text-main focus:outline-none focus:border-primary w-48 md:w-64 transition-all"
@@ -106,7 +112,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
                     key={suggestion.id}
                     type="button"
                     onClick={() => {
-                      setSearchQuery(suggestion.username); // On met à jour le bon état au clic
+                      setSearchQuery(suggestion.username);
                       setSuggestions([]);
                     }}
                     className="block w-full px-3 py-2 text-left text-sm text-text-main hover:bg-surface-hover"
@@ -142,7 +148,8 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
           <SearchIcon className="w-4 h-4" />
         </button>
 
-        {user ? (
+        {/* 🟢 CONDITION D'AFFICHAGE SÉCURISÉE AVEC effectiveUser */}
+        {effectiveUser ? (
           <>
             <div 
               onClick={() => navigate(`/${user.username}`)} 
@@ -201,7 +208,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
                     key={suggestion.id}
                     type="button"
                     onClick={() => {
-                      setSearchQuery(suggestion.username); // On met à jour le bon état au clic
+                      setSearchQuery(suggestion.username);
                       setSuggestions([]);
                     }}
                     className="block w-full px-3 py-2 text-left text-sm text-text-main hover:bg-surface-hover"

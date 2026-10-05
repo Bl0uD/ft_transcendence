@@ -1,20 +1,25 @@
 import React, { useState } from 'react';
 import api from '../api/axios';
-import { useEffect } from 'react';
+import { useAuthStore } from '../store/authStore';
 
 export default function TwoFactorSetup() {
+  const { user, updateUser } = useAuthStore();
+  
   const [step, setStep] = useState<'idle' | 'setup'>('idle');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-const handleGenerate = async () => {
+  // On lit directement le statut depuis le store global (Single Source of Truth)
+  const is2faEnabled = user?.isTwoFactorEnabled || false;
+
+  const handleGenerate = async () => {
     try {
       setError('');
-      const response = await api.get('/auth/2fa/generate'); // C'est bien un GET !
+      setSuccess('');
+      const response = await api.get('/auth/2fa/generate');
       
-      // On cible directement "response.data.qrCode" d'après ta console
       setQrCodeUrl(response.data.qrCode); 
       setStep('setup');
     } catch (err: any) {
@@ -22,21 +27,6 @@ const handleGenerate = async () => {
       setError(`Erreur : ${backendMessage}`);
     }
   };
-
-const [isAuth, setIsAuth] = useState(null);
-
-useEffect(() => {
-  const checkStatus = async () => {
-    const status = await is2faAuthenticated();
-    setIsAuth(status); // Stocke le true ou false de l'API dans l'état
-  };
-  checkStatus();
-}, []);
-
-  const is2faAuthenticated = async () => {
-    const boolValue = await api.get('auth/2fa/status');
-    return boolValue.data.is2faAuthenticated;
-  }
 
   const handleEnable = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +39,11 @@ useEffect(() => {
       
       setSuccess("La double authentification est activée avec succès !");
       setStep('idle');
+      setCode('');
+      
+      // 🟢 On met à jour l'état global immédiatement
+      updateUser({ isTwoFactorEnabled: true });
+      
     } catch (err: any) {
       const backendMessage = err.response?.data?.message || err.message;
       setError(`Erreur : ${backendMessage}`);
@@ -62,7 +57,7 @@ useEffect(() => {
       {success && <p className="text-green-400 text-sm mb-4">{success}</p>}
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
 
-      {step === 'idle' && isAuth === false && (
+      {step === 'idle' && !is2faEnabled && (
         <div>
           <p className="text-text-muted text-sm mb-4">
             Protégez votre compte en activant l'authentification à double facteur.
@@ -76,10 +71,10 @@ useEffect(() => {
         </div>
       )}
 
-      {step === 'idle' && isAuth === true && (
+      {step === 'idle' && is2faEnabled && (
         <div>
           <p className="text-text-muted text-sm mb-4">
-            La double authentification est déjà activée sur votre compte.
+            ✅ La double authentification est déjà activée sur votre compte.
           </p>
         </div>
       )}
@@ -120,7 +115,11 @@ useEffect(() => {
               </button>
               <button 
                 type="button"
-                onClick={() => setStep('idle')}
+                onClick={() => {
+                  setStep('idle');
+                  setCode('');
+                  setError('');
+                }}
                 className="flex-1 bg-border hover:bg-border-subtle text-text-main px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 Annuler

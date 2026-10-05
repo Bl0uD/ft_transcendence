@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../api/axios';
 import { Socket } from 'socket.io-client';
+import { useAuthStore } from './authStore';
 
 export interface User {
   id: number;
@@ -54,14 +55,15 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchFriends: async () => {
+    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE
     try {
       const res = await api.get<User[]>('/friends');
-      const friends = res.data;
-      set({ friends });
+      set({ friends: res.data });
     } catch (err) { console.error('Erreur fetchFriends', err); }
   },
 
   fetchPendingRequests: async () => {
+    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE
     try {
       const res = await api.get<FriendRequest[]>('/friends/requests/pending');
       set({ pendingRequests: res.data });
@@ -69,6 +71,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchBlockedUsers: async () => {
+    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE
     try {
       const res = await api.get<User[]>('/friends/blocked');
       set({ blockedUsers: res.data });
@@ -76,6 +79,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchAllSocialData: async () => {
+    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE PRINCIPALE
     await Promise.all([
       get().fetchFriends(),
       get().fetchPendingRequests(),

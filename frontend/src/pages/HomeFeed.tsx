@@ -30,7 +30,10 @@ export default function HomeFeed() {
   const location = useLocation();
   
   const user = useAuthStore((state: any) => state.user);
+  const requires2FA = useAuthStore((state: any) => state.requires2FA);
   const loginGlobal = useAuthStore((state: any) => state.login);
+
+  const effectiveUser = requires2FA ? null : user;
   
   const { socket } = useSocket('/'); 
   const { fetchAllSocialData, blockedUsers, isDesktopSidebarOpen } = useSocialStore(); 
@@ -66,7 +69,7 @@ export default function HomeFeed() {
     }
   };
 
-    const [newPostContent, setNewPostContent] = useState('');
+  const [newPostContent, setNewPostContent] = useState('');
   const [newPostImage, setNewPostImage] = useState<File | null>(null);
   const [newPostPreview, setNewPostPreview] = useState<string | null>(null);
   const [isPublicPost, setIsPublicPost] = useState(true);
@@ -81,19 +84,25 @@ export default function HomeFeed() {
     const token = searchParams.get('token');
     if (token) {
       localStorage.setItem('access_token', token);
+      
+      // On nettoie l'URL pour ne pas boucler
+      navigate('/', { replace: true });
+      
       api.get('/auth/profile', { headers: { Authorization: `Bearer ${token}` } })
         .then((res) => {
           loginGlobal(res.data, token);
-          navigate('/', { replace: true });
         })
         .catch(() => { 
-          setAuthView('login'); 
-          setShowAuthModal(true); 
+          // 🚀 CORRECTION 1 : On force l'ouverture de la modale si la 2FA bloque !
+          setAuthView('login');
+          setShowAuthModal(true);
         });
     }
   }, [searchParams, navigate, loginGlobal]);
 
   const loadFeed = async () => {
+    // 🛡️ BARRICADE : On ne charge pas le feed si on est coincé à la 2FA (évite les 401 en cascade)
+    if (useAuthStore.getState().requires2FA) return; 
     try {
       const feedRes = await api.get<Post[]>('/posts/feed');
       setPosts(feedRes.data);
@@ -101,19 +110,16 @@ export default function HomeFeed() {
   };
 
   useEffect(() => {
-    // Reload when component mounts, user logs in/out, or location key changes
     loadFeed();
   }, [location.key, user]);
 
   useEffect(() => {
-    // Reload when chat is closed
     if (!isChatOpen) {
       loadFeed();
     }
   }, [isChatOpen]);
 
   useEffect(() => {
-    // Reload when user comes back to the tab/app
     const handleFocus = () => {
       if (document.visibilityState === 'visible') loadFeed();
     };
@@ -193,34 +199,28 @@ export default function HomeFeed() {
   return (
     <div className="flex h-dvh bg-surface text-text-main overflow-hidden relative w-full max-w-full">
       
-      {/* 🟢 INTÉGRATION DE LA MODALE AVEC LA PROP initialView */}
       <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} initialView={authView} />
 
-      {/* 🟢 NAVBAR GLOBALE */}
       <TopNavBar onLoginClick={() => { setAuthView('login'); setShowAuthModal(true); }} />
 
       <div className="flex w-full pt-16 h-full max-w-full overflow-hidden">
-        {/* SIDEBAR */}
-        {user ? (
+        {effectiveUser ? (
           <SocialSidebar />
         ) : (
           <aside className="hidden lg:flex w-80 bg-surface-hover/50 border-r border-border flex-col h-full items-center justify-center p-6 text-center shrink-0">
             <span className="text-5xl mb-4">👋</span>
             <h3 className="font-bold mb-2">Rejoignez le réseau</h3>
             <p className="text-text-muted text-sm mb-4">Connectez-vous pour interagir.</p>
-            {/* 🟢 BOUTONS QUI CHANGERONT LA VUE DE LA MODALE */}
             <button onClick={() => { setAuthView('login'); setShowAuthModal(true); }} className="w-full py-2 bg-primary text-primary-content hover:bg-primary-hover rounded-lg mb-2 font-semibold transition-colors shadow-sm">Se connecter</button>
             <button onClick={() => { setAuthView('register'); setShowAuthModal(true); }} className="w-full py-2 bg-surface hover:bg-surface-hover text-text-main border border-border rounded-lg font-medium transition-colors">Créer un compte</button>
           </aside>
         )}
 
-        {/* FEED */}
         <main className={`flex-1 overflow-y-auto p-3 sm:p-6 scroll-smooth custom-scrollbar w-full max-w-full min-w-0 transition-all ${user && !isDesktopSidebarOpen ? 'lg:pl-20' : ''}`}>
           <div className="max-w-2xl mx-auto flex flex-col gap-4 sm:gap-6 pb-20 w-full max-w-full">
             <h1 className="text-xl sm:text-2xl font-bold text-text-main">Fil d'actualité</h1>
 
-            {/* BANNIÈRE VISITEUR MOBILE */}
-            {!user && (
+            {!effectiveUser && (
               <div className="lg:hidden bg-surface-hover/80 border border-border p-4 rounded-xl text-center shadow-sm">
                 <span className="text-3xl mb-2 block">👋</span>
                 <h3 className="font-bold text-sm mb-1">Rejoignez le réseau</h3>
@@ -232,8 +232,7 @@ export default function HomeFeed() {
               </div>
             )}
 
-            {/* Créer un Post */}
-            {user && (
+            {effectiveUser && (
               <div className="w-full bg-surface-hover p-4 sm:p-5 rounded-xl border border-border shadow-sm">
                 <form onSubmit={submitPost} className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex gap-3 sm:gap-4">
@@ -267,7 +266,6 @@ export default function HomeFeed() {
               </div>
             )}
 
-            {/* Liste des Posts */}
             {visiblePosts.map((post) => (
               <div key={post.id} className={`w-full bg-surface-hover rounded-xl border border-border shadow-sm flex flex-col ${post.isHidden ? "opacity-60 saturate-50" : ""}`}>
                 <div className="p-3 sm:p-4 flex items-center gap-3">
@@ -341,7 +339,7 @@ export default function HomeFeed() {
                         ))
                       )}
                     </div>
-                    {user ? (
+                    {effectiveUser ? (
                       <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2 items-center">
                         <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-7 h-7 sm:w-8 sm:h-8 text-xs border border-border shrink-0" />
                         <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 min-w-0 bg-surface-hover border border-border-subtle rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm focus:outline-none focus:border-primary" />
@@ -359,7 +357,6 @@ export default function HomeFeed() {
           </div>
         </main>
       </div>
-      
     </div>
   );
 }

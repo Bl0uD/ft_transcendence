@@ -5,52 +5,70 @@ interface User {
   username: string;
   email: string;
   avatarUrl?: string;
+  isTwoFactorEnabled?: boolean;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   user: User | null;
-  requires2FA: boolean; // <-- AJOUT
+  requires2FA: boolean;
   
-  login: (userData: User, token: string) => void;
+  // 🚀 AJOUT DU 3ÈME PARAMÈTRE OPTIONNEL
+  login: (userData: User | null, token: string, is2faVerified?: boolean) => void;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
   refreshToken: () => Promise<string | null>;
-  setRequires2FA: (status: boolean) => void; // <-- AJOUT
+  setRequires2FA: (status: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: !!localStorage.getItem('access_token'),
   token: localStorage.getItem('access_token'),
   user: null,
-  requires2FA: false, // <-- INITIALISATION
+  requires2FA: false,
 
-  login: (userData, token) => {
+  login: (userData, token, is2faVerified = false) => {
     localStorage.setItem('access_token', token);
-    set({ isAuthenticated: true, user: userData, token, requires2FA: false }); // Reset 2FA au login
+    
+    const finalUser = userData || get().user;
+    let needs2FA = !!finalUser?.isTwoFactorEnabled; 
+    
+    // 🛡️ CORRECTION : Si on force la validation (depuis le composant OTP), on débloque direct
+    if (is2faVerified) {
+      needs2FA = false;
+    } else {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.isTwoFactorAuthenticated === true) {
+          needs2FA = false;
+        }
+      } catch (e) {
+        console.error("Erreur de décodage JWT", e);
+      }
+    }
+
+    set({ 
+      isAuthenticated: true, 
+      user: finalUser, 
+      token, 
+      requires2FA: needs2FA 
+    });
   },
 
   logout: () => {
     localStorage.removeItem('access_token');
-    set({ isAuthenticated: false, user: null, token: null, requires2FA: false }); // Reset 2FA au logout
+    set({ isAuthenticated: false, user: null, token: null, requires2FA: false });
   },
 
   updateUser: (updatedData) => set((state) => ({
     user: state.user ? { ...state.user, ...updatedData } : null
   })),
 
-  // <-- AJOUT : Permet à Axios de déclencher l'interface 2FA
   setRequires2FA: (status) => set({ requires2FA: status }),
 
   refreshToken: async () => {
-    try {
-      console.warn("Refresh token non implémenté. Déconnexion forcée.");
-      get().logout();
-      return null;
-    } catch (error) {
-      get().logout();
-      return null;
-    }
+    get().logout();
+    return null;
   }
 }));
