@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-
 import HomeFeed from './pages/HomeFeed';
 import PublicProfile from './pages/PublicProfile';
 import { GlobalChatWidget } from './components/GlobalChatWidget';
@@ -55,10 +54,7 @@ function App() {
         <Route path="/:username" element={<PublicProfile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      
-      {/* 🚀 2. ON REMET LE COMPOSANT DU CHAT ICI ! */}
       <GlobalChatWidget />
-      
     </BrowserRouter>
   );
 }
