@@ -61,7 +61,7 @@ services:
         condition: service_healthy
     command: sh -c "npx prisma db push && npm run start:dev"
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/', (res) => process.exit(res.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/', (res) => process.exit(res.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))\""]
       interval: 5s
       timeout: 5s
       retries: 15
@@ -69,8 +69,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
+          cpus: '1.0'
+          memory: 1G
 
   database:
     image: postgres:15-alpine

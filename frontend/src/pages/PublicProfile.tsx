@@ -125,7 +125,8 @@ export default function PublicProfile() {
               setError("Cet utilisateur n'existe pas ou est indisponible.");
             }
           } else {
-            throw postErr; 
+			  console.error("Erreur lors du chargement des publications", postErr);
+			  setPosts([]);
           }
         }
       } catch (err: any) {
@@ -134,7 +135,6 @@ export default function PublicProfile() {
         setLoading(false);
       }
     };
-
     fetchProfileAndPosts();
   }, [username]);
 
