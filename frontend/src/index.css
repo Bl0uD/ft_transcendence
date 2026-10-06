@@ -10,7 +10,6 @@
 @font-face { font-family: 'Custom SF Pro Rounded'; src: url('./assets/fonts/sf_pro_rounded/SF-Pro-Rounded-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; font-display: swap; }
 
 
-
 @theme {
   --font-sans: 'Custom SF Pro Text', ui-sans-serif, system-ui, sans-serif;
   --font-rounded: 'Custom SF Pro Rounded', ui-sans-serif, system-ui, sans-serif;

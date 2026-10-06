@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile, Delete, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile, Delete, Patch, BadRequestException } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -38,13 +38,6 @@ export class PostsController {
     return this.postsService.getFeed(userId);
   }
 
-  @Public()
-  @Get('user/:userId')
-  async getUserPosts(@Param('userId', ParseIntPipe) targetUserId: number, @Req() req: any) {
-    const requesterId = this.extractUserId(req); // 🟢 Utilisation de la nouvelle fonction
-    return this.postsService.getUserPosts(targetUserId, requesterId);
-  }
-
   @Post()
   @UseInterceptors(FileInterceptor('image', {
     storage: diskStorage({
@@ -54,6 +47,15 @@ export class PostsController {
         cb(null, `${uniqueSuffix}${extname(file.originalname)}`);
       },
     }),
+    // 🚀 CORRECTION 1 : Limite stricte de taille (ex: 5 Mo maximum pour un post)
+    limits: { fileSize: 5 * 1024 * 1024 },
+    // 🚀 CORRECTION 2 : Rejet formel de tout ce qui n'est pas une image matricielle pure
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
+        return cb(new BadRequestException('Seuls les fichiers images (jpg, jpeg, png, webp) sont autorisés.'), false);
+      }
+      cb(null, true);
+    },
   }))
   async createPost(
     @Req() req: any,

@@ -6,12 +6,12 @@ import { PrismaService } from './prisma/prisma.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ChatModule } from './chat/chat.module';
 import { UsersModule } from './users/users.module';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; // 🚀 1. Import du ThrottlerGuard
+import { APP_GUARD } from '@nestjs/core'; // 🚀 2. Import du jeton APP_GUARD
 import { FriendsModule } from './friends/friends.module';
 import { AiModule } from './ai/ai.module';
 import { PostsModule } from './posts/posts.module';
 import { join } from 'path';
-
 
 @Module({
   imports: [
@@ -20,14 +20,21 @@ import { join } from 'path';
     FriendsModule,
     PrismaModule,
     UsersModule,
-    AiModule, // 🟢 2. Déclaration du module IA ici
+    AiModule, 
     ThrottlerModule.forRoot([{
       ttl: 60000,         // 60 secondes
       limit: 100,         // limite globale par défaut
     }]),
-	PostsModule,
+    PostsModule,
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [
+    AppService, 
+    PrismaService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
