@@ -70,7 +70,7 @@ export class PostsService {
     });
   }
 
-  // 🟢 NOUVELLE MÉTHODE : Récupérer les posts d'un utilisateur avec règles de confidentialité
+ // 🟢 MÉTHODE CORRIGÉE
   async getUserPosts(targetUserId: number, requesterId?: number) {
     // 1. On regarde son propre profil -> On voit tous ses propres posts
     if (requesterId === targetUserId) {
@@ -100,7 +100,7 @@ export class PostsService {
       },
     });
 
-    // 🟢 4. SÉCURITÉ : Si l'un des deux a bloqué l'autre, on interdit l'accès aux posts !
+    // 4. SÉCURITÉ : Si l'un des deux a bloqué l'autre, on interdit l'accès aux posts !
     if (relation && relation.status === FriendshipStatus.BLOCKED) {
       throw new ForbiddenException("Vous ne pouvez pas voir les publications de cet utilisateur.");
     }
@@ -110,9 +110,8 @@ export class PostsService {
     return this.prisma.post.findMany({
       where: { 
         authorId: targetUserId,
-        // Si ami, on ne filtre pas sur isPublic (donc il verra aussi les posts privés). 
-        // Sinon, on impose isPublic: true.
-        isPublic: isFriend ? undefined : true, isHidden: false 
+        isPublic: isFriend ? undefined : true,
+        isHidden: false 
       },
       orderBy: { createdAt: 'desc' },
       include: this.getPostIncludes(requesterId),

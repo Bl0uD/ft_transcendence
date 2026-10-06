@@ -38,6 +38,16 @@ export class PostsController {
     return this.postsService.getFeed(userId);
   }
 
+  @Public()
+  @Get('user/:userId')
+  async getUserPosts(
+    @Req() req: any,
+    @Param('userId', ParseIntPipe) targetUserId: number,
+  ) {
+    const currentUserId = this.extractUserId(req);
+    return this.postsService.getUserPosts(targetUserId, currentUserId);
+  }
+
   @Post()
   @UseInterceptors(FileInterceptor('image', {
     storage: diskStorage({
