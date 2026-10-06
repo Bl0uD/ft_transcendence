@@ -59,7 +59,7 @@ services:
         condition: service_healthy
       ai:
         condition: service_healthy
-    command: sh -c "mkdir -p /app/uploads/avatars && npx prisma db push && npm run start:dev"
+    command: sh -c "npx prisma db push && npm run start:dev"
     healthcheck:
       test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/', (res) => process.exit(res.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))\""]
       interval: 5s
