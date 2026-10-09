@@ -25,6 +25,7 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
   const [isRegLoading, setIsRegLoading] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   useEffect(() => {
     if (isOpen) setIsLoginView(initialView === 'login');
@@ -58,6 +59,10 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); 
+    if (!acceptTerms) {
+      setRegError('Vous devez accepter les conditions d\'utilisation');
+      return;
+    }
     setIsRegLoading(true);
     setRegError('');
     
@@ -129,7 +134,13 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
               <input type="text" placeholder="Username" required value={regUsername} onChange={(e) => setRegUsername(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
               <input type="email" placeholder="Email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
               <input type="password" placeholder="Mot de passe" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
-              <button type="submit" disabled={isRegLoading} className="w-full bg-primary text-primary-content px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 shadow-sm">{isRegLoading ? '...' : "S'inscrire"}</button>
+              <div className="flex items-center gap-2 mt-2">
+                <input type="checkbox" id="acceptTerms" required checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary bg-bg/50" />
+                <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-text-muted">
+                  J'accepte les <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">conditions d'utilisation</a>
+                </label>
+              </div>
+              <button type="submit" disabled={isRegLoading} className="w-full bg-primary text-primary-content px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 shadow-sm mt-2">{isRegLoading ? '...' : "S'inscrire"}</button>
             </form>
             <div className="text-center text-xs sm:text-sm text-text-muted mt-4">
               <button onClick={() => setIsLoginView(true)} className="text-primary hover:underline">Se connecter</button>

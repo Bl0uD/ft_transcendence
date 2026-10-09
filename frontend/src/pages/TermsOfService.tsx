@@ -43,7 +43,7 @@ export default function TermsOfService() {
                 <p>Nous nous réservons le droit de modifier ces conditions à tout moment. Les modifications prendront effet dès leur publication sur cette page. Il est de votre responsabilité de les consulter régulièrement.</p>
 
                 <h2 className="text-lg font-semibold mt-4 text-primary">5. Contact</h2>
-                <p>Pour toute question concernant ces conditions, veuillez nous contacter via le support.</p>
+                <p>Pour toute question concernant ces conditions, veuillez nous contacter via le support à l'adresse suivante : <a href="mailto:ft_transcendence@42perpignan.project.fr" className="text-primary hover:underline">ft_transcendence@42perpignan.project.fr</a>.</p>
               </div>
             </div>
           </div>
