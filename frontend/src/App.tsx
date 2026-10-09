@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import HomeFeed from './pages/HomeFeed';
 import PublicProfile from './pages/PublicProfile';
 import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 import { GlobalChatWidget } from './components/GlobalChatWidget';
 
 import { useAuthStore } from './store/authStore';
@@ -53,6 +54,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomeFeed />} />
         <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/:username" element={<PublicProfile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

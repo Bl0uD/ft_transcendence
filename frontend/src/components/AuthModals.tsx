@@ -137,7 +137,7 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
               <div className="flex items-center gap-2 mt-2">
                 <input type="checkbox" id="acceptTerms" required checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary bg-bg/50" />
                 <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-text-muted">
-                  J'accepte les <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">conditions d'utilisation</a>
+                  J'accepte les <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">conditions d'utilisation</a> et la <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">politique de confidentialité</a>
                 </label>
               </div>
               <button type="submit" disabled={isRegLoading} className="w-full bg-primary text-primary-content px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 shadow-sm mt-2">{isRegLoading ? '...' : "S'inscrire"}</button>
