@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore'; 
@@ -321,6 +321,11 @@ export default function PublicProfile() {
               <button type="submit" disabled={settingStatus.type === 'loading'} className="w-full bg-primary text-primary-content font-semibold py-2.5 px-4 rounded-xl hover:bg-primary-hover transition disabled:opacity-50 mt-2 text-sm">{settingStatus.type === 'loading' ? 'Enregistrement...' : 'Enregistrer'}</button>
             </form>
             <div className="mt-6 pt-6 border-t border-border"><TwoFactorSetup /></div>
+            <div className="mt-6 pt-4 border-t border-border text-center">
+              <Link to="/terms" onClick={() => setShowSettingsModal(false)} className="text-sm text-text-muted hover:text-primary transition-colors underline">
+                Conditions d'utilisation
+              </Link>
+            </div>
           </div>
         </div>
       )}
