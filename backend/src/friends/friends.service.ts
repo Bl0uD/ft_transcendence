@@ -1,13 +1,13 @@
 import { Injectable, BadRequestException, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { FriendshipStatus } from '@prisma/client';
-import { FriendsGateway } from './friends.gateway'; // 🟢 1. Import du Gateway
+import { FriendsGateway } from './friends.gateway';
 
 @Injectable()
 export class FriendsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly friendsGateway: FriendsGateway // 🟢 2. Injection du Gateway
+    private readonly friendsGateway: FriendsGateway
   ) {}
 
   /**
@@ -60,7 +60,6 @@ export class FriendsService {
       },
     });
 
-    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(requesterId);
     this.friendsGateway.notifySocialUpdate(addresseeId);
 
@@ -92,7 +91,6 @@ export class FriendsService {
       data: { status: FriendshipStatus.ACCEPTED },
     });
 
-    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(updated.requesterId);
     this.friendsGateway.notifySocialUpdate(updated.addresseeId);
 
@@ -127,7 +125,6 @@ export class FriendsService {
       where: { id: relation.id },
     });
 
-    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(deleted.requesterId);
     this.friendsGateway.notifySocialUpdate(deleted.addresseeId);
 
@@ -161,7 +158,6 @@ export class FriendsService {
         },
       });
       
-      // 🟢 3. Notification en temps réel ciblée
       this.friendsGateway.notifySocialUpdate(blockerId);
       this.friendsGateway.notifySocialUpdate(targetUserId);
       
@@ -176,7 +172,6 @@ export class FriendsService {
       },
     });
 
-    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(blockerId);
     this.friendsGateway.notifySocialUpdate(targetUserId);
 
@@ -203,7 +198,6 @@ export class FriendsService {
       where: { id: relation.id },
     });
 
-    // 🟢 3. Notification en temps réel ciblée
     this.friendsGateway.notifySocialUpdate(blockerId);
     this.friendsGateway.notifySocialUpdate(targetUserId);
 

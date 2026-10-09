@@ -5,7 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ChatService {
   constructor(private prisma: PrismaService) {}
 
-  // 🛠️ NOUVEAU : Récupère les IDs de tous ceux qui m'ont bloqué OU que j'ai bloqués
   private async getBlockedUserIds(userId: number) {
     const blocks = await this.prisma.friendship.findMany({
       where: {
@@ -31,11 +30,9 @@ export class ChatService {
           include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } }
         }
       },
-      // 🟢 CHANGEMENT : On pré-trie par date de mise à jour au lieu du nom
       orderBy: { updatedAt: 'desc' },
     });
 
-    // 🟢 SÉCURITÉ : On cache les conversations avec des utilisateurs bloqués
     return channels.filter(channel => {
       if (channel.type === 'DIRECT' || channel.name?.startsWith('dm_')) {
         const otherMember = channel.members.find(m => m.userId !== userId);
@@ -48,7 +45,6 @@ export class ChatService {
   }
 
   async getOrCreateDirectMessage(userId1: number, userId2: number) {
-    // 🟢 SÉCURITÉ : Bloque la création de salon
     const blockedIds = await this.getBlockedUserIds(userId1);
     if (blockedIds.includes(userId2)) {
       throw new ForbiddenException("Impossible de discuter : l'utilisateur est bloqué.");
@@ -117,7 +113,6 @@ export class ChatService {
 
     if (!channel) return false;
 
-    // 🟢 SÉCURITÉ : Bloque l'accès à un salon existant si un blocage est survenu
     if (channel.type === 'DIRECT' || channel.name?.startsWith('dm_')) {
       const otherMember = channel.members.find(m => m.userId !== userId);
       if (otherMember) {
@@ -134,7 +129,6 @@ export class ChatService {
     const hasAccess = await this.checkAccess(data.channelId, data.authorId);
     if (!hasAccess) throw new ForbiddenException("Envoi refusé : utilisateur bloqué.");
 
-    // 🟢 MISE À JOUR : On actualise la date du salon pour que le tri remonte la conversation
     await this.prisma.channel.update({
       where: { id: data.channelId },
       data: { updatedAt: new Date() }

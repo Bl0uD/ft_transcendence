@@ -6,8 +6,8 @@ import { PrismaService } from './prisma/prisma.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ChatModule } from './chat/chat.module';
 import { UsersModule } from './users/users.module';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'; // 🚀 1. Import du ThrottlerGuard
-import { APP_GUARD } from '@nestjs/core'; // 🚀 2. Import du jeton APP_GUARD
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { FriendsModule } from './friends/friends.module';
 import { AiModule } from './ai/ai.module';
 import { PostsModule } from './posts/posts.module';

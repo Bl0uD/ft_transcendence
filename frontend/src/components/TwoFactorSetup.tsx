@@ -41,7 +41,6 @@ export default function TwoFactorSetup() {
       setStep('idle');
       setCode('');
       
-      // 🟢 On met à jour l'état global immédiatement
       updateUser({ isTwoFactorEnabled: true });
       
     } catch (err: any) {

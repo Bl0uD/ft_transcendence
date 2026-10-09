@@ -24,7 +24,6 @@ export class AuthController {
     };
   }
 
-  // 🚀 MODIFICATION : On précise qu'on attend un "identifier"
   @Post('login')
   async login(@Body() body: { identifier: string; password: string }) {
     return this.authService.login(body);
@@ -35,16 +34,13 @@ export class AuthController {
   @UseGuards(AuthGuard('42'))
   @Get('42')
   async fortyTwoAuth() {
-    // Redirection automatique vers 42 geree par Passport
   }
 
   @Get('42/callback')
   @UseGuards(AuthGuard('42')) // Ou le nom de ton guard 42
   async fortyTwoAuthRedirect(@Req() req, @Res() res: Response) {
-    // 1. On genere le JWT pour l'utilisateur
     const jwt = await this.authService.login(req.user); 
     
-    // 2. On redirige vers le frontend en passant le token dans l'URL
     const frontendUrl = process.env.FRONTEND_URL;
     res.redirect(`${frontendUrl}/?token=${jwt.access_token}`);
   }
@@ -55,7 +51,6 @@ export class AuthController {
     return this.authService.getProfile(req.user.userId || req.user.sub);
   }
 
-  // --- NOUVELLES ROUTES 2FA ---
 
   @UseGuards(JwtAuthGuard)
   @Get('2fa/generate')

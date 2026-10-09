@@ -91,7 +91,6 @@ export class AiService implements OnModuleInit {
   }
 
   // ==========================================
-  // NOUVEAU : LOGIQUE GEMINI
   // ==========================================
   async streamGeminiResponse(userMessages: ChatMessageDto[], res: Response, userId: number): Promise<void> {
     if (!this.genAI) {
@@ -155,7 +154,6 @@ export class AiService implements OnModuleInit {
 
       let fullResponse = '';
 
-      // 🟢 CORRECTION ICI : Ajout de .stream pour itérer correctement !
       for await (const chunk of resultStream.stream) {
         const chunkText = chunk.text();
         fullResponse += chunkText;
@@ -173,14 +171,12 @@ export class AiService implements OnModuleInit {
 
     } catch (error: any) {
       this.logger.error('Erreur Stream Gemini:', error);
-      // 🟢 On envoie l'erreur détaillée au frontend pour comprendre !
       res.write(`data: ${JSON.stringify({ error: `Erreur Gemini : ${error.message || error}` })}\n\n`);
       res.end();
     }
   }
 
   // ==========================================
-  // EXISTANT : LOGIQUE OLLAMA (inchangée)
   // ==========================================
   async streamResponse(userMessages: ChatMessageDto[], res: Response, userId: number): Promise<void> {
     const lastUserMessage = userMessages[userMessages.length - 1];

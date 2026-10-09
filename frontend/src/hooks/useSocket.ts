@@ -10,7 +10,6 @@ interface UseSocketReturn {
   authError: string | null;
 }
 
-// 🟢 SÉCURITÉ : Cache global pour éviter d'ouvrir 50 connexions pour le même namespace
 const socketCache: Record<string, Socket> = {};
 
 export const useSocket = (namespace: string = '/'): UseSocketReturn => {
@@ -37,11 +36,10 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
       return;
     }
 
-    // 1. Initialisation : créer le socket s'il n'existe pas encore pour ce namespace
     if (!socketCache[namespace]) {
       socketCache[namespace] = io(namespace, {
         auth: { token },
-        path: '/socket.io', // ⚠️ Ajuste ici si tu avais une config spéciale pour ton Nginx
+        path: '/socket.io',
         transports: ['websocket'],
       });
     }
@@ -91,7 +89,6 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
       if (updateFriendStatus) updateFriendStatus(data.userId, data.status);
     };
 
-    // 2. Souscription aux événements système
     currentSocket.on('connect', handleConnect);
     currentSocket.on('connect_error', handleConnectError);
     currentSocket.on('disconnect', handleDisconnect);
@@ -108,7 +105,6 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
       setIsConnected(true); 
     }
 
-    // 3. Nettoyage strict au démontage
     return () => {
       currentSocket.off('connect', handleConnect);
       currentSocket.off('connect_error', handleConnectError);

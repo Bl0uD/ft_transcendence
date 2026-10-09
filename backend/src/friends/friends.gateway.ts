@@ -48,7 +48,6 @@ export class FriendsGateway implements OnGatewayConnection, OnGatewayDisconnect 
         console.log(`[FriendsGateway] User ${userId} connected.`);
         this.broadcastStatusChange(userId, 'ONLINE');
 
-        // 🟢 SÉCURITÉ ÉTAT INITIAL : Le serveur envoie d'office les statuts à la connexion
         this.sendInitialStatusesToClient(client, Number(userId));
       }
     } catch (e) {
@@ -57,7 +56,6 @@ export class FriendsGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
   }
 
-  // 🟢 Fonction pour envoyer les statuts initiaux directement via la BDD
   private async sendInitialStatusesToClient(client: Socket, userId: number) {
     try {
       const friendships = await this.prisma.friendship.findMany({

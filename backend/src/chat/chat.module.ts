@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common'; // 🟢 Ajout de forwardRef
+import { Module, forwardRef } from '@nestjs/common';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
@@ -10,7 +10,7 @@ import { AiModule } from '../ai/ai.module';
   imports: [
     PrismaModule, 
     AuthModule,
-    forwardRef(() => AiModule) // 🟢 PROTECTION CONTRE LA DÉPENDANCE CIRCULAIRE ICI AUSSI
+    forwardRef(() => AiModule)
   ],
   controllers: [ChatController],
   providers: [ChatGateway, ChatService],

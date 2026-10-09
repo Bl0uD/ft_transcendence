@@ -55,7 +55,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchFriends: async () => {
-    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE
+    if (useAuthStore.getState().requires2FA) return;
     try {
       const res = await api.get<User[]>('/friends');
       set({ friends: res.data });
@@ -63,7 +63,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchPendingRequests: async () => {
-    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE
+    if (useAuthStore.getState().requires2FA) return;
     try {
       const res = await api.get<FriendRequest[]>('/friends/requests/pending');
       set({ pendingRequests: res.data });
@@ -71,7 +71,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchBlockedUsers: async () => {
-    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE
+    if (useAuthStore.getState().requires2FA) return;
     try {
       const res = await api.get<User[]>('/friends/blocked');
       set({ blockedUsers: res.data });
@@ -79,7 +79,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   },
 
   fetchAllSocialData: async () => {
-    if (useAuthStore.getState().requires2FA) return; // 🛡️ BARRICADE PRINCIPALE
+    if (useAuthStore.getState().requires2FA) return;
     await Promise.all([
       get().fetchFriends(),
       get().fetchPendingRequests(),
@@ -118,7 +118,6 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       friendsStatus: { ...state.friendsStatus, [userId]: status }
     })),
 
-  // 🟢 Écoute des événements WebSocket et redemande automatique à la reconnexion
   initSocketListeners: (socket) => {
     if (!socket) return;
 
@@ -126,7 +125,6 @@ export const useSocialStore = create<SocialState>((set, get) => ({
     socket.off('friends_status_response');
     socket.off('friend_status_update');
     socket.off('connect');
-    // 🟢 NOUVEAU : Nettoyage des écouteurs sociaux
     socket.off('socialUpdate');
     socket.off('friend_request_received');
     socket.off('friend_request_accepted');
@@ -138,7 +136,6 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       }
     };
 
-    // Si la socket se connecte ou se reconnecte (très utile pour Opera / Chrome)
     socket.on('connect', requestStatuses);
     if (socket.connected) {
       requestStatuses();
@@ -154,7 +151,6 @@ export const useSocialStore = create<SocialState>((set, get) => ({
       get().updateFriendStatus(userId, status);
     });
 
-    // 🟢 NOUVEAU : Les événements sociaux globaux rafraîchissent automatiquement la donnée
     const refreshSocial = () => {
       get().fetchAllSocialData();
     };

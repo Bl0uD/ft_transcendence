@@ -36,9 +36,9 @@ export const GlobalChatWidget: React.FC = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state: any) => state.user);
   const { socket, isConnected } = useSocket('/chat');
-  
+
   const { isChatOpen, setIsChatOpen, activeRoom, setActiveRoom, unreadCounts, incrementUnread } = useChatStore();
-  
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [typingUsers, setTypingUsers] = useState<{id: number, name: string}[]>([]);
@@ -48,35 +48,31 @@ export const GlobalChatWidget: React.FC = () => {
     setTypingUsers([]);
   }, [activeRoom]);
   const [chatInput, setChatInput] = useState('');
-  
+
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiCooldown, setAiCooldown] = useState(0);
 
-  // 🟢 NOUVEAU : État du Toggle (Local Ollama vs Gemini)
   const [aiProvider, setAiProvider] = useState<'ollama' | 'gemini'>('ollama');
 
-  // 🟢 État agrandi pour desktop / ordinateur
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // 🟢 Ref pour scroller le conteneur interne sans déplacer la fenêtre/page
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
   const fetchRooms = async () => {
     try {
       const response = await api.get('/chat/channels');
       const fetchedRooms = response.data;
-      
-      // 🟢 Récupération des DEUX salons IA
+
       const realAiRoom = fetchedRooms.find((r: Room) => r.name === `ai-chat-${user.id}`);
       const realGeminiRoom = fetchedRooms.find((r: Room) => r.name === `ai-gemini-chat-${user.id}`);
-      
+
       if (!realAiRoom) fetchedRooms.push({ id: -1, name: `ai-chat-${user.id}` });
       if (!realGeminiRoom) fetchedRooms.push({ id: -2, name: `ai-gemini-chat-${user.id}` });
-      
+
       const currentActive = useChatStore.getState().activeRoom;
       if (currentActive === -1 && realAiRoom) setActiveRoom(realAiRoom.id);
       if (currentActive === -2 && realGeminiRoom) setActiveRoom(realGeminiRoom.id);
-      
+
       setRooms(fetchedRooms);
     } catch (err) {
       console.error("Erreur salons:", err);
@@ -106,17 +102,17 @@ export const GlobalChatWidget: React.FC = () => {
     window.addEventListener('open-chat-room', handleOpenChat as EventListener);
     return () => window.removeEventListener('open-chat-room', handleOpenChat as EventListener);
   }, []);
-  
+
   useEffect(() => {
     if (!isConnected || !socket || !user) return;
     const handleGlobalUpdate = () => fetchRooms();
     const handleGlobalReceiveMessage = (msg: Message) => {
       fetchRooms();
-      
+
       // Prevent double counting if the backend sends the message twice (to room and to user's personal channel)
       if (msg.id && processedMessageIds.has(msg.id)) return;
       if (msg.id) processedMessageIds.add(msg.id);
-      
+
       // Keep set size manageable
       if (processedMessageIds.size > 500) {
         const iterator = processedMessageIds.values();
@@ -137,8 +133,7 @@ export const GlobalChatWidget: React.FC = () => {
       if (activeRoom === null) setMessages([]);
       return;
     }
-    
-    // 🟢 Gère les messages de bienvenue pour les deux IA
+
     if (activeRoom === -1 || activeRoom === -2) {
       const botName = activeRoom === -1 ? 'Assistant IA (Local)' : 'Gemini IA';
       setMessages([{
@@ -148,10 +143,9 @@ export const GlobalChatWidget: React.FC = () => {
       return; 
     }
 
-    
     const handleHistory = (hist: Message[]) => { if (Array.isArray(hist)) setMessages(hist); };
     const handleReceiveMessage = (msg: Message) => { setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); };
-    
+
     const handleUserTyping = (data: { userId: number, channelId: number, username?: string }) => {
       if (data.userId === user?.id) return;
       if (data.channelId === activeRoom) {
@@ -164,14 +158,14 @@ export const GlobalChatWidget: React.FC = () => {
         setTypingUsers((prev) => prev.filter(u => u.id !== data.userId));
       }
     };
-    
+
     socket.on('load_history', handleHistory);
     socket.on('receive_message', handleReceiveMessage); 
     socket.on('user_typing', handleUserTyping);
     socket.on('user_stopped_typing', handleUserStoppedTyping);
-    
+
     socket.emit('joinChannel', { channelId: activeRoom });
-    
+
     return () => { 
       socket.off('load_history', handleHistory); 
       socket.off('receive_message', handleReceiveMessage); 
@@ -180,22 +174,19 @@ export const GlobalChatWidget: React.FC = () => {
     };
   }, [socket, activeRoom, isConnected, user]);
 
-  // 🟢 On fait défiler uniquement le conteneur des messages pour éviter tout décalage du viewport ou disparition du haut
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages, isChatOpen, isAiLoading, typingUsers]);
 
-  // 🟢 NOUVEAU : Fonction pour basculer de salon quand on clique sur le Toggle
   const toggleAiProvider = () => {
     const newProvider = aiProvider === 'ollama' ? 'gemini' : 'ollama';
     setAiProvider(newProvider);
-    
+
     const targetName = newProvider === 'ollama' ? `ai-chat-${user.id}` : `ai-gemini-chat-${user.id}`;
     const targetRoom = rooms.find(r => r.name === targetName);
-    
-    // On bascule sur le salon en base, ou sur le faux salon (-1, -2) si vierge
+
     setActiveRoom(targetRoom ? targetRoom.id : (newProvider === 'ollama' ? -1 : -2));
   };
 
@@ -213,7 +204,7 @@ export const GlobalChatWidget: React.FC = () => {
 
     if (isAiRoom) {
       if (isAiLoading || aiCooldown > 0) return; 
-      
+
       setMessages(prev => [...prev, { id: Date.now(), senderId: user.id, senderName: user.username, content: content }]);
       setIsAiLoading(true);
 
@@ -228,9 +219,8 @@ export const GlobalChatWidget: React.FC = () => {
                 const newMsgs = [...prev];
                 const lastIndex = newMsgs.length - 1;
                 const lastMsg = newMsgs[lastIndex];
-              
+
                 if (lastMsg && lastMsg.senderId === 0 && lastMsg.id !== 'welcome-ai') { 
-                  // 🟢 CORRECTION : On clone l'objet message pour éviter la mutation directe
                   newMsgs[lastIndex] = { ...lastMsg, content: lastMsg.content + chunk };
                 } else { 
                   newMsgs.push({ 
@@ -243,7 +233,6 @@ export const GlobalChatWidget: React.FC = () => {
               return newMsgs;
             });
           } else {
-              // 🟢 CORRECTION : On intercepte les erreurs (ex: Clé API manquante)
               if (chunk.error) {
                 setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Système', content: chunk.error }]);
               } 
@@ -278,7 +267,6 @@ export const GlobalChatWidget: React.FC = () => {
       if (otherMember?.user) return { name: getDisplayName(otherMember.user), icon: <ChatIcon className="w-5 h-5 text-current" />, targetUser: otherMember.user };
       return { name: 'Message Privé', icon: <ChatIcon className="w-5 h-5 text-current" />, targetUser: null };
     }
-    // 🟢 Nom d'affichage commun pour les deux IA dans la liste des salons
     if (room.name?.startsWith('ai-chat-') || room.name?.startsWith('ai-gemini-chat-')) {
       return { name: 'Assistant IA', icon: <RobotIcon className="w-6 h-6 text-current" />, targetUser: null };
     }
@@ -287,7 +275,6 @@ export const GlobalChatWidget: React.FC = () => {
 
   if (!user) return null;
 
-  // 🟢 NOUVEAU : On cache la conversation Gemini de la liste principale 
   // pour n'avoir qu'un seul onglet "Assistant IA" cliquable.
   const uniqueRooms = rooms.filter(room => !room.name?.startsWith('ai-gemini-chat-'));
 
@@ -296,7 +283,7 @@ export const GlobalChatWidget: React.FC = () => {
     const isB_AI = b.name?.startsWith('ai-chat-');
     if (isA_AI && !isB_AI) return -1;
     if (!isA_AI && isB_AI) return 1;
-    
+
     const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
     return timeB - timeA;
@@ -355,7 +342,6 @@ export const GlobalChatWidget: React.FC = () => {
                       {roomInfo.name}
                     </span>
 
-                    {/* 🟢 LE BOUTON TOGGLE (SWITCH) S'AFFICHE ICI UNIQUEMENT DANS L'IA */}
                     {isCurrentRoomAi && (
                       <div className="flex items-center gap-1.5 ml-auto sm:ml-2 bg-surface/70 p-1 px-2.5 rounded-full border border-border shrink-0">
                         <span className={`text-[10px] font-bold uppercase transition-colors ${aiProvider === 'ollama' ? 'text-primary' : 'text-text-muted'}`}>Local</span>
@@ -411,7 +397,7 @@ export const GlobalChatWidget: React.FC = () => {
                     const { name, icon, targetUser } = getRoomDisplayInfo(room);
                     const isAi = room.name?.startsWith('ai-chat-');
                     const unreadCount = isAi ? 0 : (unreadCounts[room.id] || 0);
-                    
+
                     return (
                       <li key={room.id} onClick={() => {
                           if (isAi) {
@@ -448,11 +434,11 @@ export const GlobalChatWidget: React.FC = () => {
                   {messages.map((msg, index) => {
                     const isMe = msg.senderId === user.id || msg.sender?.id === user.id;
                     const senderName = msg.sender ? getDisplayName(msg.sender) : (msg.senderName || 'Utilisateur');
-                    
+
                     return (
                       <div key={msg.id || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <div className={`flex gap-2 max-w-[90%] sm:max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                          
+
                           {!isMe && (
                             <div className="flex-shrink-0 flex flex-col justify-end pb-1">
                               <UserAvatar 
@@ -473,7 +459,7 @@ export const GlobalChatWidget: React.FC = () => {
                                 {senderName}
                               </span>
                             )}
-                            
+
                             <div className={`p-3 rounded-2xl text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed ${isMe ? 'bg-primary text-primary-content rounded-br-sm shadow-md' : 'bg-surface-hover text-text-main border border-border rounded-bl-sm shadow-sm'}`}>
                               {msg.content}
                             </div>
@@ -503,7 +489,6 @@ export const GlobalChatWidget: React.FC = () => {
                     </div>
                   )}
 
-                  
                   {isAiLoading && (
                     <div className="flex w-full justify-start mt-2">
                       <div className="p-3 rounded-2xl text-xs sm:text-sm bg-surface-hover text-text-muted border border-border rounded-bl-sm shadow-sm italic animate-pulse">
@@ -512,10 +497,7 @@ export const GlobalChatWidget: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
-                
-                
-                
+
                 <form onSubmit={handleSendChatMessage} className="p-3 bg-surface border-t border-border flex gap-2 items-center shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
                   <input 
                     type="text" 

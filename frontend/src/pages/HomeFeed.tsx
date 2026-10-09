@@ -93,7 +93,6 @@ export default function HomeFeed() {
           loginGlobal(res.data, token);
         })
         .catch(() => { 
-          // 🚀 CORRECTION 1 : On force l'ouverture de la modale si la 2FA bloque !
           setAuthView('login');
           setShowAuthModal(true);
         });
@@ -101,7 +100,6 @@ export default function HomeFeed() {
   }, [searchParams, navigate, loginGlobal]);
 
   const loadFeed = async () => {
-    // 🛡️ BARRICADE : On ne charge pas le feed si on est coincé à la 2FA (évite les 401 en cascade)
     if (useAuthStore.getState().requires2FA) return; 
     try {
       const feedRes = await api.get<Post[]>('/posts/feed');

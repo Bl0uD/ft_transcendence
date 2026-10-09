@@ -6,7 +6,6 @@ import { FriendshipStatus } from '@prisma/client';
 export class PostsService {
   constructor(private prisma: PrismaService) {}
 
-  // 🛠️ MÉTHODE UTILITAIRE : Permet de ne pas répéter les inclusions complexes de Prisma
   private getPostIncludes(currentUserId: number) {
     return {
       author: { select: { id: true, username: true, nickname: true, avatar: true } }, 
@@ -40,7 +39,6 @@ export class PostsService {
       });
     }
 
-    // 🟢 1. On récupère TOUTES les relations (Amis + Bloqués) en une seule requête
     const relations = await this.prisma.friendship.findMany({
       where: {
         OR: [{ requesterId: userId }, { addresseeId: userId }],
@@ -55,7 +53,6 @@ export class PostsService {
       .filter((r) => r.status === FriendshipStatus.BLOCKED)
       .map((r) => (r.requesterId === userId ? r.addresseeId : r.requesterId));
 
-    // 🟢 2. On applique le filtre : on exclut catégoriquement les utilisateurs bloqués
     return this.prisma.post.findMany({
       where: {
         authorId: { notIn: blockedIds }, // 👈 LA MAGIE EST ICI
@@ -70,9 +67,7 @@ export class PostsService {
     });
   }
 
- // 🟢 MÉTHODE CORRIGÉE
   async getUserPosts(targetUserId: number, requesterId?: number) {
-    // 1. On regarde son propre profil -> On voit tous ses propres posts
     if (requesterId === targetUserId) {
       return this.prisma.post.findMany({
         where: { authorId: targetUserId },
@@ -81,7 +76,6 @@ export class PostsService {
       });
     }
 
-    // 2. Un visiteur non connecté regarde le profil -> Il ne voit que les posts publics
     if (!requesterId) {
       return this.prisma.post.findMany({
         where: { authorId: targetUserId, isPublic: true, isHidden: false },
@@ -90,7 +84,6 @@ export class PostsService {
       });
     }
 
-    // 3. Un utilisateur connecté regarde le profil d'un autre -> On cherche n'importe quelle relation
     const relation = await this.prisma.friendship.findFirst({
       where: {
         OR: [
@@ -100,7 +93,6 @@ export class PostsService {
       },
     });
 
-    // 4. SÉCURITÉ : Si l'un des deux a bloqué l'autre, on interdit l'accès aux posts !
     if (relation && relation.status === FriendshipStatus.BLOCKED) {
       throw new ForbiddenException("Vous ne pouvez pas voir les publications de cet utilisateur.");
     }

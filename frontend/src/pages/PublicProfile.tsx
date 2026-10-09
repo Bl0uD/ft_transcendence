@@ -30,13 +30,13 @@ export default function PublicProfile() {
   const { colorTheme, setColorTheme } = useThemeStore();
   const { username } = useParams();
   const navigate = useNavigate();
-  
+
   const currentUser = useAuthStore((state: any) => state.user);
   const updateUser = useAuthStore((state: any) => state.updateUser);
   const { setIsChatOpen, setActiveRoom } = useChatStore(); 
-  
+
   const { fetchAllSocialData, friends, blockedUsers, removeFriend, blockUser, unblockUser, sendRequest, isDesktopSidebarOpen } = useSocialStore(); 
-  
+
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,9 +76,9 @@ export default function PublicProfile() {
   const isBlocked = blockedUsers.some(u => u.id === profileData?.id);
   const wasBlocked = useRef(isBlocked);
 
-  const [showAuthModal, setShowAuthModal] = useState(false); // 👈 NOUVEL ÉTAT POUR LA MODALE
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  
+
   // Paramètres Profil
   const [settingUsername, setSettingUsername] = useState('');
   const [settingNickname, setSettingNickname] = useState('');
@@ -147,7 +147,6 @@ export default function PublicProfile() {
     wasBlocked.current = isBlocked;
   }, [isBlocked, profileData]);
 
-  // NOUVEAU: Recharger les posts du profil plus souvent
   const isChatOpen = useChatStore((state) => state.isChatOpen);
   useEffect(() => {
     if (profileData && !isBlocked) {
@@ -156,9 +155,9 @@ export default function PublicProfile() {
            .then(res => setPosts(res.data))
            .catch(() => {});
       };
-      
+
       if (!isChatOpen) loadPosts();
-      
+
       const handleFocus = () => {
         if (document.visibilityState === 'visible') loadPosts();
       };
@@ -177,7 +176,7 @@ export default function PublicProfile() {
       const response = await api.post('/chat/channels/dm', { targetUserId: profileData.id });
       const channelId = response.data.id || response.data.channel?.id;
       if (!channelId) return alert("ID du salon introuvable.");
-      
+
       setActiveRoom(Number(channelId));
       setIsChatOpen(true);
     } catch (err: any) {
@@ -208,13 +207,13 @@ export default function PublicProfile() {
       if (avatarFile) formData.append('avatar', avatarFile);
 
       const response = await api.put('/users/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      
+
       setSettingStatus({ type: 'success', message: 'Profil mis à jour avec succès !' });
       updateUser(response.data);
       setProfileData((prev: any) => ({ ...prev, ...response.data }));
       setAvatarFile(null);
       setSettingPassword('');
-      
+
       setTimeout(() => {
         setShowSettingsModal(false);
         setSettingStatus({ type: 'idle', message: '' });
@@ -247,7 +246,7 @@ export default function PublicProfile() {
   };
 
   if (loading) return <div className="min-h-screen bg-bg flex items-center justify-center text-text-main">Chargement...</div>;
-  
+
   if (error) return (
     <div className="flex h-dvh bg-bg text-text-main overflow-hidden relative w-full max-w-full">
       <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
@@ -267,7 +266,6 @@ export default function PublicProfile() {
   return (
     <div className="flex h-dvh bg-bg text-text-main overflow-hidden relative w-full max-w-full">
 
-      {/* 🟢 INTÉGRATION DE LA MODALE */}
       <AuthModals isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* MODALE PARAMÈTRES */}
@@ -336,7 +334,7 @@ export default function PublicProfile() {
 
         <main className={`flex-1 min-w-0 overflow-y-auto p-3 sm:p-6 scroll-smooth custom-scrollbar w-full max-w-full transition-all ${currentUser && !isDesktopSidebarOpen ? 'lg:pl-20' : ''}`}>
           <div className="max-w-3xl mx-auto flex flex-col gap-6 sm:gap-8 pb-20 w-full min-w-0">
-            
+
             <div className="bg-surface rounded-2xl p-5 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 border border-border shadow-lg mt-2 sm:mt-4">
               <UserAvatar avatarUrl={profileData?.avatar} username={getDisplayName(profileData)} className="w-24 h-24 sm:w-32 sm:h-32 text-4xl sm:text-5xl border-4 border-border shadow-xl shrink-0" />
               <div className="flex-1 text-center sm:text-left min-w-0">
@@ -344,9 +342,9 @@ export default function PublicProfile() {
                 <p className="text-base sm:text-lg text-primary font-medium truncate">@{profileData?.username}</p>
                 {profileData?.createdAt && <p className="text-xs sm:text-sm mt-2 sm:mt-3 text-text-muted">Rejoint le {new Date(profileData.createdAt).toLocaleDateString()}</p>}
               </div>
-              
+
               <div className="flex flex-wrap justify-center sm:justify-start gap-2 sm:gap-3 w-full sm:w-auto mt-3 sm:mt-0">
-                {/* 🟢 GESTION DES BOUTONS SELON LE STATUT */}
+
                 {!currentUser ? (
                   <>
                     <button onClick={() => setShowAuthModal(true)} className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-content hover:bg-primary-hover rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2">
@@ -440,7 +438,7 @@ export default function PublicProfile() {
                 </div>
 
                     {post.content && <div className="px-3 sm:px-5 pb-3 sm:pb-4 text-text-main whitespace-pre-wrap leading-relaxed text-xs sm:text-sm break-words">{post.content}</div>}
-                    
+
                     {post.imageUrl && (
                       <div className="w-full bg-surface/40 border-y border-border overflow-hidden flex items-center justify-center max-h-[550px]">
                         <img 
@@ -451,7 +449,7 @@ export default function PublicProfile() {
                         />
                       </div>
                     )}
-                    
+
                     <div className="px-3 sm:px-5 py-2.5 sm:py-3 flex gap-4 sm:gap-8 border-t border-border/50 bg-surface/50">
                       <button onClick={() => currentUser ? toggleLike(post.id) : setShowAuthModal(true)} className={`flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-colors ${post.likes.length > 0 ? 'text-pink-500 hover:text-pink-400' : 'text-text-muted hover:text-text-muted'}`}>
                         {post.likes.length > 0 ? <LikeIcon className="w-4 h-4 fill-current" /> : <LikeIcon className="w-4 h-4" />} {post._count.likes}

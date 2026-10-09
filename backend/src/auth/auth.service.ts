@@ -15,7 +15,6 @@ export class AuthService {
 
   async register(body: any) {
     try {
-      // 👇 Nettoyage des chaînes de caractères
       const cleanEmail = body.email.trim();
       const cleanUsername = body.username.trim();
 
@@ -44,7 +43,7 @@ export class AuthService {
           id: true,
           email: true,
           username: true,
-          nickname: true, // 🟢 FIX : On sélectionne le nickname dès l'inscription
+          nickname: true,
           createdAt: true,
         }
       });
@@ -61,10 +60,8 @@ export class AuthService {
   async login(bodyOrUser: any) {
     let user;
 
-    // 🚀 CAS 1 : Login manuel
     if (bodyOrUser.identifier && bodyOrUser.password) {
       
-      // 👇 ON NETTOIE L'IDENTIFIANT ICI (supprime les espaces avant/après)
       const cleanIdentifier = bodyOrUser.identifier.trim();
       
       console.log(`🔍 [LOGIN] Tentative avec l'identifiant : "${cleanIdentifier}"`);
@@ -80,7 +77,6 @@ export class AuthService {
 
       console.log(`👤 [LOGIN] Résultat en base de données :`, user ? `Trouvé (${user.username})` : `NON TROUVÉ`);
 
-      // 🚨 Erreurs spécifiques pour comprendre ce qui bloque
       if (!user) {
         throw new UnauthorizedException(`Aucun compte trouvé pour l'identifiant : ${bodyOrUser.identifier}`);
       }
@@ -94,19 +90,17 @@ export class AuthService {
         throw new UnauthorizedException("Mot de passe incorrect.");
       }
     } 
-    // CAS 2 : Login API 42
     else if (bodyOrUser.id) {
       user = bodyOrUser;
     } else {
       throw new UnauthorizedException("Données de connexion invalides.");
     }
 
-    // 🔑 GENERATION DU JWT
     const payload = { 
       sub: user.id, 
       email: user.email, 
       username: user.username, 
-      nickname: user.nickname, // 🟢 FIX : Ajout du nickname dans le payload
+      nickname: user.nickname,
       avatar: user.avatar,
       isTwoFactorAuthenticated: !user.isTwoFactorEnabled 
     };
@@ -117,7 +111,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         username: user.username,
-        nickname: user.nickname, // 🟢 FIX : C'est ICI qu'il manquait le nickname !
+        nickname: user.nickname,
         createdAt: user.createdAt,
         avatar: user.avatar,
         isTwoFactorEnabled: user.isTwoFactorEnabled,
@@ -196,7 +190,6 @@ export class AuthService {
     });
   }
 
-  // --- NOUVEAU : FONCTIONS 2FA ---
 
   async enableTwoFactor(userId: number) {
     return this.prisma.user.update({
@@ -206,7 +199,6 @@ export class AuthService {
   }
 
 async loginWith2fa(userId: number) {
-    // 1. On récupère l'utilisateur pour avoir toutes ses infos
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
     });
@@ -215,17 +207,15 @@ async loginWith2fa(userId: number) {
       throw new NotFoundException('Utilisateur non trouvé');
     }
     
-    // 2. On crée le payload parfait avec le fameux sceau 2FA validé !
     const payload = { 
       sub: user.id, 
       email: user.email, 
       username: user.username,
       nickname: user.nickname, 
       avatar: user.avatar,
-      isTwoFactorAuthenticated: true, // 🚀 C'est lui qui ouvre les portes du Guard
+      isTwoFactorAuthenticated: true,
     };
     
-    // 3. On renvoie le token ET le profil, exactement comme le login classique
     return {
       access_token: await this.jwtService.signAsync(payload),
       user: {

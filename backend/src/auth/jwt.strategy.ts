@@ -22,7 +22,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException();
     }
 
-    // Ce qui est retourné ici sera injecté dans la requête (req.user)
     return { 
       userId: payload.sub, 
       email: payload.email, 

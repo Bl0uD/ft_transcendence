@@ -94,7 +94,6 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
     }
   };
 
-  // 🚀 LA LIGNE MAGIQUE QUI RÉSOUT TOUT TON PROBLÈME EST ICI :
   if (!isOpen) return null;
 
   return (

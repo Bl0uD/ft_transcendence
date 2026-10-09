@@ -7,7 +7,6 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  // 🌍 NOUVEAUTÉ : Récupérer le profil public (pour la page /:username)
   async getPublicProfile(username: string) {
     const user = await this.prisma.user.findUnique({
       where: { username: username },
@@ -45,7 +44,6 @@ export class UsersService {
     return users;
   }
 
-  // 🔒 MISE À JOUR : Ajout du paramètre `nickname`
   async updateProfile(
     userId: number | string, 
     data: { username?: string; nickname?: string; email?: string; password?: string; avatar?: string, is2faAuthenticated?: boolean }
@@ -59,7 +57,6 @@ export class UsersService {
         updateData.username = data.username;
       }
 
-      // 👇 Prise en compte du nickname
       if (data.nickname !== undefined) {
         updateData.nickname = data.nickname;
       }
@@ -84,12 +81,10 @@ export class UsersService {
       return await this.prisma.user.update({
         where: { id: numericId },
         data: updateData,
-        // 👇 On renvoie aussi le nickname mis à jour au frontend
         select: { id: true, username: true, nickname: true, email: true, avatar: true },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // P2002 = Violation d'unicité (ex: username ou email déjà existant)
         if (error.code === 'P2002') {
           const target = (error.meta?.target as string[]) || [];
           if (target.includes('email')) {

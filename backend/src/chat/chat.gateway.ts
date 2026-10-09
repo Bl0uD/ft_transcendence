@@ -24,7 +24,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
-  // 🗑️ Adieu la Map 'activeConnections', on utilise la puissance de Socket.io à la place !
 
   constructor(
     private jwtService: JwtService,
@@ -50,7 +49,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       client.data.user = { ...payload, sub: userId, id: userId };
       
-      // 🟢 LA SOLUTION EST LÀ : Dès qu'il se connecte, on le place dans une "room" à son nom
       client.join(`user_${userId}`);
 
       console.log(`[ChatGateway] Connexion réussie. User ID: ${userId}`);
@@ -98,11 +96,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   public async notifyNewMessage(channelId: number, authorId: number, savedMessage: any) {
     const roomTarget = String(channelId);
     
-    // 1. Envoi au salon (ceux qui ont la fenêtre ouverte)
     this.server.to(roomTarget).emit('receive_message', savedMessage);
     this.server.to(roomTarget).emit('rooms_updated'); 
 
-    // 2. Notification ciblée absolue
     const channel = await this.prisma.channel.findUnique({
       where: { id: channelId },
       include: { members: true }, 
@@ -110,7 +106,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (channel && channel.members) {
       for (const member of channel.members) {
-        // 🟢 On ping la room personnelle du membre (ex: "user_45")
         // L'IA ping TOUT le monde, toi compris ! (React se charge d'ignorer les doublons visuels)
         this.server.to(`user_${member.userId}`).emit('receive_message', savedMessage);
         this.server.to(`user_${member.userId}`).emit('rooms_updated');

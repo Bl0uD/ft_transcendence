@@ -25,7 +25,6 @@ export class ChatController {
     return this.chatService.getUserChannels(userId);
   }
 
-  // 🟢 CORRECTION : On écoute bien sur "channels/dm" pour correspondre au frontend
   @Post('channels/dm')
   async startDirectMessage(@Body('targetUserId') targetUserId: number, @Req() req: any) {
     console.log("Token Décrypté (req.user) :", req.user);

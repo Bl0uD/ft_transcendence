@@ -8,7 +8,6 @@ import { SendFriendRequestDto, AcceptRequestDto, FriendActionDto } from './dto/f
 export class FriendsController {
   constructor(private readonly friendsService: FriendsService) {}
 
-  // Petite fonction utilitaire pour extraire le bon ID du token JWT
   private getUserId(req: any): number {
     return req.user.userId || req.user.sub;
   }

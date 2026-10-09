@@ -11,7 +11,6 @@ export class TwoFactorAuthService {
     const secret = authenticator.generateSecret();
     const otpauthUrl = authenticator.keyuri(user.email, 'ft_transcendence', secret);
 
-    // On sauvegarde le secret dans la BDD pour cet utilisateur
     await this.prisma.user.update({
       where: { id: user.id },
       data: { twoFactorSecret: secret },

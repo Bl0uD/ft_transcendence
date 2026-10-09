@@ -1,7 +1,7 @@
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import { IS_PUBLIC_KEY } from '../public.decorator'; // Attention au "../" car ce fichier est dans le dossier "2fa"
+import { IS_PUBLIC_KEY } from '../public.decorator';
 
 @Injectable()
 export class JwtTwoFactorGuard extends AuthGuard('jwt') {
@@ -19,7 +19,7 @@ export class JwtTwoFactorGuard extends AuthGuard('jwt') {
       return true; // Laisse passer la requête si la route est @Public()
     }
     
-    return super.canActivate(context); // Sinon, on fait la vérification normale
+    return super.canActivate(context);
   }
 
   handleRequest(err, user, info) {

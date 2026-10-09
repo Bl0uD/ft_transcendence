@@ -18,13 +18,11 @@ interface TopNavBarProps {
 
 export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
   const navigate = useNavigate();
-  
-  // 🟢 On récupère requires2FA depuis le store
+
   const user = useAuthStore((state: any) => state.user);
   const requires2FA = useAuthStore((state: any) => state.requires2FA); 
   const logout = useAuthStore((state: any) => state.logout);
-  
-  // 🛡️ BARRICADE VISUELLE : Si la 2FA est requise, la navbar te considère comme Visiteur
+
   const effectiveUser = requires2FA ? null : user;
 
   const { pendingRequests, isSocialDrawerOpen, setIsSocialDrawerOpen } = useSocialStore();
@@ -53,7 +51,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
       const response = await api.get(`/users/search/${query}`);
       const users = Array.isArray(response.data) ? response.data : [];
       setSuggestions(users);
-      
+
     } catch (err) {
       console.error("Erreur lors de la recherche des utilisateurs :", err);
       setSuggestions([]);
@@ -62,7 +60,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
 
   return (
     <nav className="fixed top-0 left-0 w-full max-w-full h-16 bg-surface-hover border-b border-border z-50 flex items-center justify-between px-3 sm:px-6 shadow-md">
-      
+
       {/* GAUCHE : Social Mobile + Logo + Accueil */}
       <div className="flex items-center gap-2 sm:gap-6 min-w-0">
         {/* BOUTON SOCIAL MOBILE (Affiché uniquement si effectiveUser est vrai) */}
@@ -128,7 +126,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
 
       {/* DROITE : Actions, Recherche Mobile, Profil */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        
+
         {/* BOUTON THEME SOMBRE/CLAIR */}
         <button
           onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
@@ -148,7 +146,6 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
           <SearchIcon className="w-4 h-4" />
         </button>
 
-        {/* 🟢 CONDITION D'AFFICHAGE SÉCURISÉE AVEC effectiveUser */}
         {effectiveUser ? (
           <>
             <div 

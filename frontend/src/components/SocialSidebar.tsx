@@ -29,7 +29,6 @@ export default function SocialSidebar() {
   } = useSocialStore();
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
-  // Initialisation des écouteurs de statut (pastilles vertes/grises) au montage
   useEffect(() => {
     if (socket) {
       initSocketListeners(socket);

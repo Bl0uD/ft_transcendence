@@ -16,7 +16,6 @@ export class SendMessageDto {
   )
   content: string;
 
-  // 🔄 MODIFIÉ : On attend désormais un channelId numérique strict
   @IsInt({ message: 'Le channelId doit être un nombre entier.' })
   @IsPositive({ message: 'Le channelId doit être un nombre positif.' })
   @IsNotEmpty()

@@ -2,12 +2,11 @@ import api from './axios'; // On importe api pour réutiliser ses en-têtes d'au
 
 export async function streamAIChat(
   prompt: string,
-  mode: 'ollama' | 'gemini', // 🟢 Nouveau paramètre pour cibler le bon modèle
+  mode: 'ollama' | 'gemini',
   onChunk: (chunk: string | any) => void,
   onRateLimit: () => void
 ): Promise<void> {
   try {
-    // 1. Récupération du token
     const token =
       localStorage.getItem('access_token') ||
       localStorage.getItem('token');
@@ -24,12 +23,10 @@ export async function streamAIChat(
       headers['Authorization'] = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     }
 
-    // 2. Sélection de la route en fonction du mode
     const endpoint = mode === 'gemini' 
       ? '/api/ai/gemini/stream' 
       : '/api/ai/chat/stream';
 
-    // 3. Requête Fetch configurée
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -52,7 +49,6 @@ export async function streamAIChat(
       throw new Error("Erreur lors de la communication avec l'IA.");
     }
 
-    // 4. Traitement du flux SSE
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
@@ -73,7 +69,6 @@ export async function streamAIChat(
         try {
           const parsed = JSON.parse(cleanLine);
           
-          // 🟢 Si c'est Gemini, on extrait directement le texte pour l'afficher
           if (mode === 'gemini' && parsed.text) {
              onChunk(parsed.text);
           } else {

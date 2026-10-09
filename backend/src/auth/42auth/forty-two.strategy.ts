@@ -16,14 +16,12 @@ export class FortyTwoStrategy extends PassportStrategy(Strategy, '42') {
 
   async validate(accessToken: string, refreshToken: string, profile: any): Promise<any> {
 	  
-	// 👇 AJOUTE CES LOGS POUR TOUT VOIR DANS TON TERMINAL BACKEND
 	console.log("==================== PROFIL 42 BRUT ====================");
 	console.log(JSON.stringify(profile, null, 2));
 	console.log("========================================================");
 	console.log("Photos reçues :", profile.photos);
 	console.log("Image JSON :", profile._json?.image);
 	
-	// On extrait bien l'ID fourni par l'API 42 (profil.id)
     const user = {
       fortyTwoId: profile.id.toString(),
       email: profile.emails[0].value,

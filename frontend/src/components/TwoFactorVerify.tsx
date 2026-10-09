@@ -21,7 +21,6 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
     setLoading(true);
 
     try {
-      // 1. On envoie le code 
       const response = await api.post('/auth/2fa/authenticate', { 
         twoFactorCode: code 
       });
@@ -29,10 +28,8 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
       const token = response.data.access_token;
       let userData = response.data.user;
 
-      // On écrase l'ancien token dans le navigateur
       localStorage.setItem('access_token', token);
 
-      // 2. 🚀 BLINDAGE : On force le header Authorization avec le nouveau token 
       // pour garantir que la requête profil ne sera pas rejetée
       if (!userData) {
         const profileRes = await api.get('/auth/profile', {
@@ -41,7 +38,6 @@ export default function TwoFactorVerify({ onClose }: TwoFactorVerifyProps) {
         userData = profileRes.data;
       }
 
-      // 3. On valide la session pour le Store global
       login(userData, token, true);
       
       if (onClose) {

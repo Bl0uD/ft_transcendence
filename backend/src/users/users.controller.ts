@@ -12,7 +12,6 @@ import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  // 🌍 ROUTE PUBLIQUE : Accessible sans être connecté
   @Get('public/:username')
   async getPublicProfile(@Param('username') username: string) {
     return this.usersService.getPublicProfile(username);
@@ -22,7 +21,6 @@ export class UsersController {
   async searchUsers(@Param('query') query: string) {
     return this.usersService.searchUsers(query);
   }
-  // 🔒 ROUTE PROTÉGÉE : Modification des paramètres
   @UseGuards(JwtTwoFactorGuard)
   @Put('profile')
   @UseInterceptors(FileInterceptor('avatar', {
@@ -45,7 +43,7 @@ export class UsersController {
   async updateProfile(
     @Req() req: any,
     @Body('username') username?: string,
-    @Body('nickname') nickname?: string, // 👈 NOUVEAU : Récupération du nickname
+    @Body('nickname') nickname?: string,
     @Body('email') email?: string,
     @Body('password') password?: string,
     @UploadedFile() file?: Express.Multer.File,

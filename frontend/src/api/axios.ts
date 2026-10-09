@@ -30,7 +30,6 @@ api.interceptors.response.use(
         console.warn('🟡 2FA requise. Bascule vers le formulaire OTP.');
         useAuthStore.getState().setRequires2FA(true);
       } 
-      // 🚀 CORRECTION ICI : On ajoute les routes 2FA à la liste des exceptions
       else if (
         !requestUrl.includes('/auth/login') && 
         !requestUrl.includes('/auth/register') &&

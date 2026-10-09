@@ -14,7 +14,6 @@ interface AuthState {
   user: User | null;
   requires2FA: boolean;
   
-  // 🚀 AJOUT DU 3ÈME PARAMÈTRE OPTIONNEL
   login: (userData: User | null, token: string, is2faVerified?: boolean) => void;
   logout: () => void;
   updateUser: (updatedData: Partial<User>) => void;
@@ -34,7 +33,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const finalUser = userData || get().user;
     let needs2FA = !!finalUser?.isTwoFactorEnabled; 
     
-    // 🛡️ CORRECTION : Si on force la validation (depuis le composant OTP), on débloque direct
     if (is2faVerified) {
       needs2FA = false;
     } else {

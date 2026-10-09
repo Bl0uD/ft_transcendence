@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 interface UserAvatarProps {
   avatarUrl?: string | null;
   username?: string;
-  className?: string; // Permet de passer la taille (ex: "w-7 h-7" ou "w-10 h-10")
+  className?: string;
   onClick?: () => void;
 }
 
@@ -25,7 +25,6 @@ export default function UserAvatar({
   // Classes de base (arrondi, comportement au clic, fusion avec la taille passée)
   const baseClasses = `rounded-full shrink-0 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary transition-all' : ''} ${className}`;
 
-  // S'il n'y a pas d'image ou si elle est cassée -> Affichage de la lettre
   if (!avatarUrl || hasError) {
     return (
       <div
@@ -37,7 +36,6 @@ export default function UserAvatar({
     );
   }
 
-  // Sinon -> Affichage de l'image
   return (
     <img
       src={avatarUrl}
