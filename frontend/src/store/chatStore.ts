@@ -5,10 +5,12 @@ interface ChatState {
   isChatOpen: boolean;
   activeRoom: number | null;
   unreadCounts: Record<number, number>;
+  lastReadIds: Record<number, number>;
   setIsChatOpen: (isOpen: boolean) => void;
   setActiveRoom: (roomId: number | null) => void;
   incrementUnread: (roomId: number) => void;
   clearUnread: (roomId: number) => void;
+  setLastReadMessageId: (roomId: number, msgId: number) => void;
 }
 
 export const useChatStore = create<ChatState>()(
@@ -17,6 +19,7 @@ export const useChatStore = create<ChatState>()(
       isChatOpen: false,
       activeRoom: null,
       unreadCounts: {},
+      lastReadIds: {},
       setIsChatOpen: (isOpen) => set((state) => {
         // If chat is opened and there's an active room, clear its unread count
         const newUnreadCounts = { ...state.unreadCounts };
@@ -46,11 +49,14 @@ export const useChatStore = create<ChatState>()(
         const newCounts = { ...state.unreadCounts };
         delete newCounts[roomId];
         return { unreadCounts: newCounts };
-      })
+      }),
+      setLastReadMessageId: (roomId, msgId) => set((state) => ({
+        lastReadIds: { ...state.lastReadIds, [roomId]: Math.max(state.lastReadIds[roomId] || 0, msgId) }
+      }))
     }),
     {
       name: 'chat-storage',
-      partialize: (state) => ({ unreadCounts: state.unreadCounts }),
+      partialize: (state) => ({ unreadCounts: state.unreadCounts, lastReadIds: state.lastReadIds }),
     }
   )
 );
