@@ -193,6 +193,9 @@ export const GlobalChatWidget: React.FC = () => {
 
     const handleHistory = (hist: Message[]) => { 
       if (Array.isArray(hist)) {
+         // Prevent race condition if user switches rooms rapidly before history arrives
+         if (hist.length > 0 && hist[0].channelId !== activeRoom) return;
+         
          setMessages(hist);
          if (hist.length > 0) {
             useChatStore.getState().setLastReadMessageId(activeRoom, Number(hist[hist.length - 1].id));
@@ -371,7 +374,10 @@ export const GlobalChatWidget: React.FC = () => {
   const activeRoomInfo = activeRoom ? rooms.find(r => r.id === activeRoom) : null;
   const isCurrentRoomAi = activeRoomInfo?.name?.startsWith('ai-chat-') || activeRoomInfo?.name?.startsWith('ai-gemini-chat-');
 
-  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + (b as number), 0);
+  const totalUnread = rooms.reduce((total, room) => {
+    const isAi = room.name?.startsWith('ai-chat-');
+    return total + (isAi ? 0 : (unreadCounts[room.id] || 0));
+  }, 0);
 
   return (
     <>

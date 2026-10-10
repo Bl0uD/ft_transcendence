@@ -25,7 +25,7 @@ export default function SocialSidebar() {
     friends, pendingRequests, blockedUsers, friendsStatus,
     isSocialDrawerOpen, setIsSocialDrawerOpen,
     isDesktopSidebarOpen, setIsDesktopSidebarOpen,
-    sendRequest, acceptRequest, unblockUser, initSocketListeners 
+    sendRequest, acceptRequest, removeFriend, unblockUser, initSocketListeners 
   } = useSocialStore();
   const [suggestions, setSuggestions] = useState<any[]>([]);
 
@@ -234,12 +234,20 @@ export default function SocialSidebar() {
                 >
                   {getDisplayName(r.requester)}
                 </span> vous a ajouté.
-                <button 
-                  onClick={() => acceptRequest(r.id)} 
-                  className="w-full mt-3 py-1.5 bg-primary text-primary-content hover:bg-primary-hover rounded-lg font-semibold transition-colors text-xs sm:text-sm"
-                >
-                  Accepter
-                </button>
+                <div className="flex gap-2 mt-3">
+                  <button 
+                    onClick={() => acceptRequest(r.id)} 
+                    className="flex-1 py-1.5 bg-primary text-primary-content hover:bg-primary-hover rounded-lg font-semibold transition-colors text-xs sm:text-sm"
+                  >
+                    Accepter
+                  </button>
+                  <button 
+                    onClick={() => removeFriend(r.requester.id)} 
+                    className="flex-1 py-1.5 bg-surface text-text-main hover:bg-surface-hover rounded-lg font-semibold transition-colors text-xs sm:text-sm border border-border"
+                  >
+                    Refuser
+                  </button>
+                </div>
               </div>
             ))
           )
