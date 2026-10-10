@@ -375,7 +375,7 @@ export const GlobalChatWidget: React.FC = () => {
   const isCurrentRoomAi = activeRoomInfo?.name?.startsWith('ai-chat-') || activeRoomInfo?.name?.startsWith('ai-gemini-chat-');
 
   const totalUnread = rooms.reduce((total, room) => {
-    const isAi = room.name?.startsWith('ai-chat-');
+    const isAi = room.name?.startsWith('ai-chat-') || room.name?.startsWith('ai-gemini-chat-');
     return total + (isAi ? 0 : (unreadCounts[room.id] || 0));
   }, 0);
 
@@ -480,7 +480,7 @@ export const GlobalChatWidget: React.FC = () => {
                 ) : (
                   sortedRooms.map(room => {
                     const { name, icon, targetUser } = getRoomDisplayInfo(room);
-                    const isAi = room.name?.startsWith('ai-chat-');
+                    const isAi = room.name?.startsWith('ai-chat-') || room.name?.startsWith('ai-gemini-chat-');
                     const unreadCount = isAi ? 0 : (unreadCounts[room.id] || 0);
 
                     return (
