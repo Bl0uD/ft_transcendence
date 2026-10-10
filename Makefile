@@ -17,7 +17,7 @@ else
 endif
 # -----------------------------
 
-all: up
+all: build up
 
 help:
 	@echo "Usage:"
@@ -45,9 +45,9 @@ down:
 down-v:
 	make fclean
 
-re: down up
+re: down all
 
-restart: down up
+restart: down all
 
 logs:
 	$(COMPOSE) logs -f
