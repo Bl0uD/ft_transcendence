@@ -7,10 +7,11 @@ export class MagicBytesValidationPipe implements PipeTransform {
     if (!file) return file; 
 
     try {
-      // Importation dynamique (contourne le conflit ESM/CommonJS de NestJS)
-      const { fileTypeFromFile } = await (eval('import("file-type")') as Promise<any>);
+      // Compatibilité avec file-type v16 (CommonJS, fromFile) et v17+ (ESM, fileTypeFromFile)
+      const ft = require('file-type');
+      const getFileType = ft.fromFile || ft.fileTypeFromFile;
       
-      const fileType = await fileTypeFromFile(file.path);
+      const fileType = await getFileType(file.path);
       const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
 
       if (!fileType || !allowedMimeTypes.includes(fileType.mime)) {
