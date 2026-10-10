@@ -294,12 +294,10 @@ export const GlobalChatWidget: React.FC = () => {
         setAiLoadingRoomId(null); 
       } catch (error) {
         console.log(error);
-        setIsAiLoading(false);
-        setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: localAiAvatar }, content: "Impossible de joindre l'API." }]);
-        /*setAiLoadingRoomId(null);
+        setAiLoadingRoomId(null);
         if (useChatStore.getState().activeRoom === roomWhenSent) {
-          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: "Impossible de joindre l'API." }]);*/
-        //}
+          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: localAiAvatar }, content: "Impossible de joindre l'API." }]);
+        }
       }
 
     } else {
