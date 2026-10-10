@@ -221,11 +221,16 @@ export const GlobalChatWidget: React.FC = () => {
       setMessages(prev => [...prev, { id: Date.now(), senderId: user.id, senderName: user.username, content: content }]);
       setIsAiLoading(true);
 
+      const roomWhenSent = activeRoom;
+
       try {
         await streamAIChat(
           content,
           aiProvider,
           (chunk) => {
+            // Empêche le texte de s'écrire dans la mauvaise room si l'utilisateur change d'onglet !
+            if (useChatStore.getState().activeRoom !== roomWhenSent) return;
+
             if (typeof chunk === 'string') {
               // GEMINI : flux de texte en continu
               setMessages(prev => {
@@ -265,7 +270,9 @@ export const GlobalChatWidget: React.FC = () => {
         setIsAiLoading(false); 
       } catch (error) {
         setIsAiLoading(false);
-        setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: "Impossible de joindre l'API." }]);
+        if (useChatStore.getState().activeRoom === roomWhenSent) {
+          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: "Impossible de joindre l'API." }]);
+        }
       }
 
     } else {
