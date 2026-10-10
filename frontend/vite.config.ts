@@ -10,5 +10,6 @@ export default defineConfig({
   server: {
     host: true,
     strictPort: true,
+    allowedHosts: ["transcendence.axurit66.fr"]
   }
 })

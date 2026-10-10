@@ -1,4 +1,4 @@
-localhost {
+:80 {
     # 1. Fichiers téléversés (Uploads)
     handle /uploads/* {
         root * /usr/share/caddy
