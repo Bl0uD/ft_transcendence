@@ -42,7 +42,7 @@ model User {
   email     String   @unique
   username  String   @unique
   nickname  String?  // NOUVEAU : Pseudonyme d'affichage libre, sans contrainte d'unicité
-  password  String?  // Rendu optionnel pour le Bot IA et OAuth 42
+  password  String?  // Rendu optionnel pour l'Assistant IA et OAuth 42
   
   // NOUVEAU : L'avatar n'est plus optionnel (plus de '?'), il a une image par défaut
   avatar    String   @default("/assets/default-avatar.png")

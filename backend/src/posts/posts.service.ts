@@ -6,6 +6,8 @@ import { FriendshipStatus } from '@prisma/client';
 export class PostsService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly internalUsernames = ['Assistant IA', 'Gemini IA', 'Bot IA'];
+
   private getPostIncludes(currentUserId: number) {
     return {
       author: { select: { id: true, username: true, nickname: true, avatar: true } }, 
@@ -31,9 +33,15 @@ export class PostsService {
   }
 
   async getFeed(userId?: number) {
+    const internalUsers = await this.prisma.user.findMany({
+      where: { username: { in: this.internalUsernames } },
+      select: { id: true },
+    });
+    const internalIds = internalUsers.map((user) => user.id);
+
     if (!userId) {
       return this.prisma.post.findMany({
-        where: { isPublic: true, isHidden: false },
+        where: { isPublic: true, isHidden: false, authorId: { notIn: internalIds } },
         orderBy: { createdAt: 'desc' },
         include: this.getPostIncludes(-1), // -1 pour qu'un visiteur n'ait jamais de posts "likés"
       });
@@ -55,7 +63,7 @@ export class PostsService {
 
     return this.prisma.post.findMany({
       where: {
-        authorId: { notIn: blockedIds }, // 👈 LA MAGIE EST ICI
+        authorId: { notIn: [...blockedIds, ...internalIds] }, // 👈 On exclut aussi les comptes IA internes
         OR: [
           { isPublic: true, isHidden: false },
           { authorId: userId },
@@ -68,6 +76,15 @@ export class PostsService {
   }
 
   async getUserPosts(targetUserId: number, requesterId?: number) {
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: { username: true },
+    });
+
+    if (!targetUser || this.internalUsernames.includes(targetUser.username)) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
     if (requesterId === targetUserId) {
       return this.prisma.post.findMany({
         where: { authorId: targetUserId },

@@ -26,6 +26,9 @@ interface Room {
   updatedAt?: string; 
 }
 
+const localAiAvatar = '/assets/ai-local.svg';
+const geminiAiAvatar = '/assets/ai-gemini.svg';
+
 const getDisplayName = (account?: { username?: string; nickname?: string | null } | null) => {
   if (!account || !account.username) return 'Visiteur';
   return account.nickname && account.nickname.trim() !== '' ? account.nickname : account.username;
@@ -51,7 +54,7 @@ export const GlobalChatWidget: React.FC = () => {
   }, [activeRoom]);
   const [chatInput, setChatInput] = useState('');
 
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiLoadingRoomId, setAiLoadingRoomId] = useState<number | null>(null);
   const [aiCooldown, setAiCooldown] = useState(0);
 
   const [aiProvider, setAiProvider] = useState<'ollama' | 'gemini'>('ollama');
@@ -59,6 +62,13 @@ export const GlobalChatWidget: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const getAiMessageAvatar = (roomName?: string | null, provider?: 'ollama' | 'gemini') => {
+    if (roomName?.startsWith('ai-gemini-chat-') || provider === 'gemini') {
+      return geminiAiAvatar;
+    }
+    return localAiAvatar;
+  };
 
   const fetchRooms = async () => {
     try {
@@ -148,6 +158,7 @@ export const GlobalChatWidget: React.FC = () => {
       const botName = activeRoom === -1 ? 'Assistant IA (Local)' : 'Gemini IA';
       setMessages([{
         id: 'welcome-ai', senderId: 0, senderName: botName,
+        sender: { id: activeRoom, username: botName, avatar: activeRoom === -1 ? localAiAvatar : geminiAiAvatar },
         content: `Bonjour ! Je suis ${botName}. Comment puis-je vous aider aujourd'hui ?`
       }]);
       return; 
@@ -191,7 +202,7 @@ export const GlobalChatWidget: React.FC = () => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, isChatOpen, isAiLoading, typingUsers]);
+  }, [messages, isChatOpen, aiLoadingRoomId, typingUsers]);
 
   const toggleAiProvider = () => {
     const newProvider = aiProvider === 'ollama' ? 'gemini' : 'ollama';
@@ -216,14 +227,22 @@ export const GlobalChatWidget: React.FC = () => {
     setChatInput('');
 
     if (isAiRoom) {
-      if (isAiLoading || aiCooldown > 0) return; 
+      if (aiLoadingRoomId !== null || aiCooldown > 0) return; 
 
       setMessages(prev => [...prev, { id: Date.now(), senderId: user.id, senderName: user.username, content: content }]);
-      setIsAiLoading(true);
+      setAiLoadingRoomId(activeRoom);
 
       const roomWhenSent = activeRoom;
 
       try {
+        const aiAvatar = getAiMessageAvatar(currentRoom?.name, aiProvider);
+        const normalizeNavigateTarget = (target?: string) => {
+          if (!target) return null;
+          const trimmed = String(target).trim();
+          if (!trimmed) return null;
+          if (trimmed.startsWith('/')) return trimmed;
+          return `/user/${encodeURIComponent(trimmed)}`;
+        };
         await streamAIChat(
           content,
           aiProvider,
@@ -245,6 +264,7 @@ export const GlobalChatWidget: React.FC = () => {
                     id: Date.now() + 1, 
                     senderId: 0, 
                     senderName: aiProvider === 'gemini' ? 'Gemini IA' : 'Assistant IA', 
+                    sender: { id: aiProvider === 'gemini' ? -2 : -1, username: aiProvider === 'gemini' ? 'Gemini IA' : 'Assistant IA', avatar: aiAvatar },
                     content: chunk 
                   }); 
                 }
@@ -257,9 +277,13 @@ export const GlobalChatWidget: React.FC = () => {
               // OLLAMA : Objet JSON structuré
               else if (chunk.done) {
                 if (chunk.result) {
-                  setMessages((prev) => [...prev, { id: Date.now() + 1, senderId: 0, senderName: 'Assistant IA', content: chunk.result.reply }]);
-                  if (chunk.result.action === 'NAVIGATE' && chunk.result.target) {
-                    setTimeout(() => navigate(chunk.result.target), 1500);
+                  const replyText = chunk.result.reply || 'Action effectuée.';
+                  setMessages((prev) => [...prev, { id: Date.now() + 1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: aiAvatar }, content: replyText }]);
+                  if (chunk.result.action === 'NAVIGATE') {
+                    const target = normalizeNavigateTarget(chunk.result.target);
+                    if (target) {
+                      setTimeout(() => navigate(target), 1500);
+                    }
                   }
                 }
               }
@@ -267,11 +291,12 @@ export const GlobalChatWidget: React.FC = () => {
           },
           () => { setAiCooldown(60); }
         );
-        setIsAiLoading(false); 
+        setAiLoadingRoomId(null); 
       } catch (error) {
-        setIsAiLoading(false);
+        console.log(error);
+        setAiLoadingRoomId(null);
         if (useChatStore.getState().activeRoom === roomWhenSent) {
-          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: "Impossible de joindre l'API." }]);
+          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: localAiAvatar }, content: "Impossible de joindre l'API." }]);
         }
       }
 
@@ -368,7 +393,7 @@ export const GlobalChatWidget: React.FC = () => {
                         <button 
                           onClick={toggleAiProvider}
                           className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none ${aiProvider === 'gemini' ? 'bg-emerald-500' : 'bg-primary-hover'}`}
-                          title={`Basculer vers ${aiProvider === 'ollama' ? 'Gemini IA' : 'IA Locale (Ollama)'}`}
+                          title={`Basculer vers ${aiProvider === 'ollama' ? 'Gemini IA' : 'Assistant IA'}`}
                         >
                           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${aiProvider === 'gemini' ? 'translate-x-4' : 'translate-x-1'}`}/>
                         </button>
@@ -454,6 +479,7 @@ export const GlobalChatWidget: React.FC = () => {
                   {messages.map((msg, index) => {
                     const isMe = msg.senderId === user.id || msg.sender?.id === user.id;
                     const senderName = msg.sender ? getDisplayName(msg.sender) : (msg.senderName || 'Utilisateur');
+                    const senderAvatar = msg.sender?.avatar || (senderName === 'Assistant IA' ? localAiAvatar : senderName === 'Gemini IA' ? geminiAiAvatar : undefined);
 
                     return (
                       <div key={msg.id || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -462,7 +488,7 @@ export const GlobalChatWidget: React.FC = () => {
                           {!isMe && (
                             <div className="flex-shrink-0 flex flex-col justify-end pb-1">
                               <UserAvatar 
-                                avatarUrl={msg.sender?.avatar} 
+                                avatarUrl={senderAvatar} 
                                 username={senderName} 
                                 className="w-7 h-7 text-xs border border-border shadow-sm cursor-pointer hover:ring-2 hover:ring-primary" 
                                 onClick={() => msg.sender?.username && navigate(`/user/${msg.sender.username}`)}
@@ -509,7 +535,7 @@ export const GlobalChatWidget: React.FC = () => {
                     </div>
                   )}
 
-                  {isAiLoading && (
+                  {aiLoadingRoomId === activeRoom && (
                     <div className="flex w-full justify-start mt-2">
                       <div className="p-3 rounded-2xl text-xs sm:text-sm bg-surface-hover text-text-muted border border-border rounded-bl-sm shadow-sm italic animate-pulse">
                         L'IA réfléchit...
@@ -534,12 +560,12 @@ export const GlobalChatWidget: React.FC = () => {
                       }
                     }} 
                     placeholder={isCurrentRoomAi && aiCooldown > 0 ? `Attendez ${aiCooldown}s...` : "Écrire un message..."} 
-                    disabled={isCurrentRoomAi && (isAiLoading || aiCooldown > 0)}
+                    disabled={isCurrentRoomAi && (aiLoadingRoomId !== null || aiCooldown > 0)}
                     className="flex-1 min-w-0 bg-bg border border-border rounded-full px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-primary disabled:opacity-50 text-text-main" 
                   />
                   <button 
                     type="submit" 
-                    disabled={!chatInput.trim() || (isCurrentRoomAi && (isAiLoading || aiCooldown > 0))} 
+                    disabled={!chatInput.trim() || (isCurrentRoomAi && (aiLoadingRoomId !== null || aiCooldown > 0))} 
                     className="bg-primary text-primary-content w-10 h-10 rounded-full flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-primary-hover transition-colors text-sm"
                   >
                     ➤

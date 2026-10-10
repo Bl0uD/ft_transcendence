@@ -62,6 +62,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     } catch (error) {
       console.log(`[ChatGateway] Connexion rejetée : ${error.message}`);
+      client.emit('auth_error', { message: error.message });
       client.disconnect();
     }
   }

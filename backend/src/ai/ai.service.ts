@@ -25,7 +25,7 @@ export class AiService implements OnModuleInit {
     4. SI l'utilisateur demande d'ajouter en ami => action: "ADD_FRIEND", target: "nom_utilisateur"
     5. SI l'utilisateur demande de supprimer un ami => action: "DELETE_FRIEND", target: "nom_utilisateur"
     6. SI l'utilisateur demande d'envoyer un message => action: "SEND_MESSAGE", target: "nom_utilisateur", payload: "le message"
-    7. SI l'utilisateur demande d'aller sur une page ou un profil => action: "NAVIGATE", target: "URL (ex: /user/nom_utilisateur pour un profil)"
+    7. SI l'utilisateur demande d'aller sur une page ou un profil => action: "NAVIGATE", target: "URL canonique (ex: /user/nom_utilisateur pour un profil)"
     8. SINON (si la demande ne correspond à rien de précis ou est incompréhensible) => action: "NONE", target: null, et dans le champ "reply", liste clairement et poliment toutes les tâches que tu peux accomplir (voir/lister les amis, bloquer/débloquer un utilisateur, ajouter/supprimer un ami, envoyer un message à quelqu'un, ou naviguer sur une page).
 
     EXEMPLES D'ENTRAÎNEMENT ABSOLUS :
@@ -35,6 +35,7 @@ export class AiService implements OnModuleInit {
     - "bloque l'user norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
     - "bloque norabino" -> {"action": "BLOCK_USER", "target": "norabino", "payload": null, "reply": "Blocage en cours..."}
     - "blabla ou autre chose" -> {"action": "NONE", "target": null, "payload": null, "reply": "Je n'ai pas compris votre demande. Voici ce que je peux faire pour vous :\n- Lister vos amis\n- Ajouter ou supprimer un ami\n- Bloquer ou débloquer un utilisateur\n- Envoyer un message à un utilisateur\n- Naviguer sur le site"}
+    - "navigue vers norabino" -> {"action": "NAVIGATE", "target": "/user/norabino", "payload": null, "reply": "Navigation vers le profil norabino..."}
 
     IMPORTANT : "null" doit s'écrire sans guillemets dans le JSON.`;
 
@@ -63,24 +64,42 @@ export class AiService implements OnModuleInit {
 
   private async ensureAiBotsExist() {
     try {
-      const ollamaBot = await this.prisma.user.upsert({
-        where: { username: 'Bot IA' },
-        update: { avatar: '/robot.svg' },
-        create: {
-          username: 'Bot IA',
-          email: 'bot-ia@transcendence.internal',
-          avatar: '/robot.svg',
-        },
-      });
-      this.aiBotId = ollamaBot.id;
+      const assistantName = 'Assistant IA';
+      const assistantEmail = 'assistant-ia@transcendence.internal';
+      const assistantAvatar = '/assets/ai-local.svg';
+      const legacyBot = await this.prisma.user.findUnique({ where: { username: 'Bot IA' } });
 
+      if (legacyBot) {
+        const assistantBot = await this.prisma.user.update({
+          where: { id: legacyBot.id },
+          data: {
+            username: assistantName,
+            email: assistantEmail,
+            avatar: assistantAvatar,
+          },
+        });
+        this.aiBotId = assistantBot.id;
+      } else {
+        const assistantBot = await this.prisma.user.upsert({
+          where: { username: assistantName },
+          update: { avatar: assistantAvatar },
+          create: {
+            username: assistantName,
+            email: assistantEmail,
+            avatar: assistantAvatar,
+          },
+        });
+        this.aiBotId = assistantBot.id;
+      }
+
+      const geminiAvatar = '/assets/ai-gemini.svg';
       const geminiBot = await this.prisma.user.upsert({
         where: { username: 'Gemini IA' },
-        update: { avatar: '/robot.svg' },
+        update: { avatar: geminiAvatar },
         create: {
           username: 'Gemini IA',
           email: 'gemini-ia@transcendence.internal',
-          avatar: '/robot.svg',
+          avatar: geminiAvatar,
         },
       });
       this.geminiBotId = geminiBot.id;
@@ -278,6 +297,22 @@ export class AiService implements OnModuleInit {
                         where: { username: aiResult.target },
                       });
                       
+
+                    if (action === 'NAVIGATE') {
+                      const rawTarget = String(aiResult.target || '').trim();
+
+                      if (!rawTarget) {
+                        throw new Error("Aucune destination n'a été fournie.");
+                      }
+
+                      if (rawTarget.startsWith('/')) {
+                        aiResult.target = rawTarget;
+                      } else {
+                        aiResult.target = `/user/${encodeURIComponent(rawTarget)}`;
+                      }
+
+                      aiResult.reply = aiResult.reply || `Navigation vers ${rawTarget}...`;
+                    }
                       if (!targetUser) throw new Error(`L'utilisateur "${aiResult.target}" est introuvable.`);
                     }
 
@@ -297,26 +332,31 @@ export class AiService implements OnModuleInit {
                         });
 
                         await this.chatGateway.notifyNewMessage(dmChannel.id, userId, savedDirectMessage);
+                        aiResult.reply = aiResult.reply || `Message envoyé à ${targetUser.username}.`;
                         break;
                         
                       case 'ADD_FRIEND':
                         if (!targetUser) break;
                         await this.friendsService.sendRequest(userId, targetUser.username);
+                        aiResult.reply = aiResult.reply || `Demande d'ami envoyée à ${targetUser.username}.`;
                         break;
                         
                       case 'DELETE_FRIEND':
                         if (!targetUser) break;
                         await this.friendsService.removeRelation(userId, targetUser.id);
+                        aiResult.reply = aiResult.reply || `Relation supprimée avec ${targetUser.username}.`;
                         break;
                         
                       case 'BLOCK_USER':
                         if (!targetUser) break;
                         await this.friendsService.blockUser(userId, targetUser.id);
+                        aiResult.reply = aiResult.reply || `${targetUser.username} a été bloqué.`;
                         break;
                         
                       case 'UNBLOCK_USER':
                         if (!targetUser) break;
                         await this.friendsService.unblockUser(userId, targetUser.id);
+                        aiResult.reply = aiResult.reply || `${targetUser.username} a été débloqué.`;
                         break;
                         
                       case 'GET_FRIENDS_USERS':
@@ -332,9 +372,17 @@ export class AiService implements OnModuleInit {
                           ? `Utilisateurs bloqués : ${blocked.map(b => b.username).join(', ')}.` 
                           : "Vous n'avez bloqué personne.";
                         break;
+                      case 'NAVIGATE':
+                        break;
                     }
                   } catch (logicError: any) {
                     aiResult.reply = logicError.message || "L'action n'a pas pu être effectuée.";
+                  }
+
+                  if (!aiResult.reply || !String(aiResult.reply).trim()) {
+                    aiResult.reply = action === 'NAVIGATE'
+                      ? `Navigation vers ${aiResult.target}.`
+                      : 'Action effectuée.';
                   }
 
                   await this.chatService.saveMessage({
