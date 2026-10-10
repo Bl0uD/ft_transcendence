@@ -69,7 +69,7 @@ export class AiService implements OnModuleInit {
         create: {
           username: 'Bot IA',
           email: 'bot-ia@transcendence.internal',
-          avatar: '/assets/default-avatar.png',
+          avatar: '/robot.svg',
         },
       });
       this.aiBotId = ollamaBot.id;
@@ -80,7 +80,7 @@ export class AiService implements OnModuleInit {
         create: {
           username: 'Gemini IA',
           email: 'gemini-ia@transcendence.internal',
-          avatar: '/assets/default-avatar.png',
+          avatar: '/robot.svg',
         },
       });
       this.geminiBotId = geminiBot.id;
