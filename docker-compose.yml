@@ -23,6 +23,7 @@ services:
   frontend:
     build: ./frontend
     container_name: transcendence_frontend
+    restart: unless-stopped
     env_file:
       - .env
     volumes:

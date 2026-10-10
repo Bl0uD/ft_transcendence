@@ -19,4 +19,4 @@ COPY --chown=node:node . .
 EXPOSE 5173
 
 # En production, on build d'abord le projet puis on le sert avec vite preview
-CMD ["sh", "-c", "npm run build && npm run preview -- --host 0.0.0.0 --port 5173"]
+CMD ["sh", "-c", "npm run build && npx vite preview --host 0.0.0.0 --port 5173 || (echo 'BUILD FAILED' && sleep 3600)"]
