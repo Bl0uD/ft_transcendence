@@ -55,7 +55,7 @@ function App() {
         <Route path="/" element={<HomeFeed />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/:username" element={<PublicProfile />} />
+        <Route path="/user/:username" element={<PublicProfile />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <GlobalChatWidget />

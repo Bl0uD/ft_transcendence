@@ -234,7 +234,7 @@ export default function HomeFeed() {
               <div className="w-full bg-surface-hover p-4 sm:p-5 rounded-xl border border-border shadow-sm">
                 <form onSubmit={submitPost} className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex gap-3 sm:gap-4">
-                    <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/${user.username}`)} />
+                    <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/user/${user.username}`)} />
                     <textarea placeholder={`Quoi de neuf, ${getDisplayName(user)} ?`} value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} className="flex-1 bg-surface/50 rounded-lg py-2.5 sm:py-3 px-3 sm:px-4 border border-border focus:border-primary focus:outline-none resize-none min-h-[75px] text-xs sm:text-sm" />
                   </div>
                   {newPostPreview && (
@@ -267,10 +267,10 @@ export default function HomeFeed() {
             {visiblePosts.map((post) => (
               <div key={post.id} className={`w-full bg-surface-hover rounded-xl border border-border shadow-sm flex flex-col ${post.isHidden ? "opacity-60 saturate-50" : ""}`}>
                 <div className="p-3 sm:p-4 flex items-center gap-3">
-                  <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
+                  <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/user/${post.author.username}`)} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold font-rounded text-sm sm:text-base cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
+                      <span className="font-semibold font-rounded text-sm sm:text-base cursor-pointer hover:underline truncate" onClick={() => navigate(`/user/${post.author.username}`)}>{getDisplayName(post.author)}</span>
                       <span className="text-[10px] uppercase font-bold text-text-muted bg-surface px-2 py-0.5 rounded border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
                     </div>
                     <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
@@ -328,9 +328,9 @@ export default function HomeFeed() {
                       ) : (
                         post.comments.map(c => (
                           <div key={c.id} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
-                            <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 text-xs border border-border shrink-0" onClick={() => navigate(`/${c.user.username}`)} />
+                            <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 text-xs border border-border shrink-0" onClick={() => navigate(`/user/${c.user.username}`)} />
                             <div className="bg-surface-hover px-3 py-2 rounded-xl rounded-tl-none border border-border min-w-0 max-w-full">
-                              <span className="font-semibold text-text-muted mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/${c.user.username}`)}>{getDisplayName(c.user)}</span>
+                              <span className="font-semibold text-text-muted mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/user/${c.user.username}`)}>{getDisplayName(c.user)}</span>
                               <span className="text-text-main break-words">{c.content}</span>
                             </div>
                           </div>

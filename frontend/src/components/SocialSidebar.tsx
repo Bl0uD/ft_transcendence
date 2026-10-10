@@ -203,7 +203,7 @@ export default function SocialSidebar() {
                   <div className={`w-2.5 h-2.5 shrink-0 rounded-full ${friendsStatus[f.id] === 'ONLINE' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-text-muted'}`} />
                   <span 
                     className="cursor-pointer hover:underline font-medium text-sm truncate text-text-main" 
-                    onClick={() => { setIsSocialDrawerOpen(false); navigate(`/${f.username}`); }}
+                    onClick={() => { setIsSocialDrawerOpen(false); navigate(`/user/${f.username}`); }}
                   >
                     {getDisplayName(f)}
                   </span>
@@ -228,7 +228,7 @@ export default function SocialSidebar() {
               <div key={r.id} className="p-3 bg-surface/50 rounded-xl border border-border text-sm">
                 <span 
                   className="font-semibold cursor-pointer text-primary hover:underline" 
-                  onClick={() => { setIsSocialDrawerOpen(false); navigate(`/${r.requester.username}`); }}
+                  onClick={() => { setIsSocialDrawerOpen(false); navigate(`/user/${r.requester.username}`); }}
                 >
                   {getDisplayName(r.requester)}
                 </span> vous a ajouté.

@@ -217,7 +217,7 @@ export default function PublicProfile() {
       setTimeout(() => {
         setShowSettingsModal(false);
         setSettingStatus({ type: 'idle', message: '' });
-        if (settingUsername !== username) navigate(`/${settingUsername}`, { replace: true });
+        if (settingUsername !== username) navigate(`/user/${settingUsername}`, { replace: true });
       }, 1500);
     } catch (error: any) {
       setSettingStatus({ type: 'error', message: error.response?.data?.message || 'Erreur lors de la mise à jour.' });
@@ -412,10 +412,10 @@ export default function PublicProfile() {
                 posts.map((post) => (
                   <div key={post.id} className="w-full bg-surface rounded-2xl border border-border shadow-sm flex flex-col">
                     <div className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
-                      <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-10 h-10 sm:w-12 sm:h-12 border border-border shrink-0" onClick={() => navigate(`/${post.author.username}`)} />
+                      <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-10 h-10 sm:w-12 sm:h-12 border border-border shrink-0" onClick={() => navigate(`/user/${post.author.username}`)} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold font-rounded text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/${post.author.username}`)}>{getDisplayName(post.author)}</span>
+                          <span className="font-bold font-rounded text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/user/${post.author.username}`)}>{getDisplayName(post.author)}</span>
                           <span className="text-[10px] uppercase font-bold text-text-muted bg-surface-hover px-2 py-0.5 rounded-md border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
                         </div>
                         <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
@@ -475,9 +475,9 @@ export default function PublicProfile() {
                           ) : (
                             post.comments.map(c => (
                               <div key={c.id} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
-                                <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 sm:w-7 sm:h-7 text-xs border border-border shrink-0" onClick={() => navigate(`/${c.user.username}`)} />
+                                <UserAvatar avatarUrl={c.user.avatar} username={getDisplayName(c.user)} className="w-6 h-6 sm:w-7 sm:h-7 text-xs border border-border shrink-0" onClick={() => navigate(`/user/${c.user.username}`)} />
                                 <div className="bg-surface px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl rounded-tl-none border border-border min-w-0 max-w-full">
-                                  <span className="font-bold text-primary mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/${c.user.username}`)}>{getDisplayName(c.user)}</span>
+                                  <span className="font-bold text-primary mr-2 cursor-pointer hover:underline" onClick={() => navigate(`/user/${c.user.username}`)}>{getDisplayName(c.user)}</span>
                                   <span className="text-text-muted break-words">{c.content}</span>
                                 </div>
                               </div>

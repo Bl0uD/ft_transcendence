@@ -329,14 +329,14 @@ export const GlobalChatWidget: React.FC = () => {
                         avatarUrl={roomInfo.targetUser.avatar} 
                         username={roomInfo.name} 
                         className="w-8 h-8 border border-border-subtle cursor-pointer shrink-0" 
-                        onClick={() => navigate(`/${roomInfo.targetUser.username}`)}
+                        onClick={() => navigate(`/user/${roomInfo.targetUser.username}`)}
                       />
                     ) : (
                       <span className="text-xl shrink-0">{roomInfo.icon}</span>
                     )}
                     <span 
                       className={`font-semibold text-sm sm:text-base truncate max-w-[120px] sm:max-w-[200px] ${roomInfo.targetUser ? 'cursor-pointer hover:underline' : ''}`}
-                      onClick={() => roomInfo.targetUser && navigate(`/${roomInfo.targetUser.username}`)}
+                      onClick={() => roomInfo.targetUser && navigate(`/user/${roomInfo.targetUser.username}`)}
                       title={roomInfo.name}
                     >
                       {roomInfo.name}
@@ -445,7 +445,7 @@ export const GlobalChatWidget: React.FC = () => {
                                 avatarUrl={msg.sender?.avatar} 
                                 username={senderName} 
                                 className="w-7 h-7 text-xs border border-border shadow-sm cursor-pointer hover:ring-2 hover:ring-primary" 
-                                onClick={() => msg.sender?.username && navigate(`/${msg.sender.username}`)}
+                                onClick={() => msg.sender?.username && navigate(`/user/${msg.sender.username}`)}
                               />
                             </div>
                           )}
@@ -454,13 +454,13 @@ export const GlobalChatWidget: React.FC = () => {
                             {!isMe && (
                               <span 
                                 className="text-[10px] font-medium text-text-muted mb-1 ml-1 cursor-pointer hover:underline truncate max-w-[140px]" 
-                                onClick={() => msg.sender?.username && navigate(`/${msg.sender.username}`)}
+                                onClick={() => msg.sender?.username && navigate(`/user/${msg.sender.username}`)}
                               >
                                 {senderName}
                               </span>
                             )}
 
-                            <div className={`p-3 rounded-2xl text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed ${isMe ? 'bg-primary text-primary-content rounded-br-sm shadow-md' : 'bg-surface-hover text-text-main border border-border rounded-bl-sm shadow-sm'}`}>
+                            <div className={`p-3 rounded-2xl text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed max-w-full ${isMe ? 'bg-primary text-primary-content rounded-br-sm shadow-md' : 'bg-surface-hover text-text-main border border-border rounded-bl-sm shadow-sm'}`}>
                               {msg.content}
                             </div>
                           </div>

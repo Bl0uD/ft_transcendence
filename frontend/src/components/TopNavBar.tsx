@@ -35,7 +35,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/${searchQuery.trim()}`);
+      navigate(`/user/${searchQuery.trim()}`);
       setSearchQuery('');
       setShowMobileSearch(false);
     }
@@ -149,7 +149,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
         {effectiveUser ? (
           <>
             <div 
-              onClick={() => navigate(`/${user.username}`)} 
+              onClick={() => navigate(`/user/${user.username}`)} 
               className="flex items-center gap-2 cursor-pointer hover:bg-surface px-2 sm:px-3 py-1.5 rounded-lg transition-colors"
             >
               <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-8 h-8 sm:w-9 sm:h-9 border border-border-subtle" />

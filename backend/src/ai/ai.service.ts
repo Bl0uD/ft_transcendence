@@ -25,7 +25,7 @@ export class AiService implements OnModuleInit {
     4. SI l'utilisateur demande d'ajouter en ami => action: "ADD_FRIEND", target: "nom_utilisateur"
     5. SI l'utilisateur demande de supprimer un ami => action: "DELETE_FRIEND", target: "nom_utilisateur"
     6. SI l'utilisateur demande d'envoyer un message => action: "SEND_MESSAGE", target: "nom_utilisateur", payload: "le message"
-    7. SI l'utilisateur demande d'aller sur une page => action: "NAVIGATE", target: "URL"
+    7. SI l'utilisateur demande d'aller sur une page ou un profil => action: "NAVIGATE", target: "URL (ex: /user/nom_utilisateur pour un profil)"
     8. SINON (si la demande ne correspond à rien de précis ou est incompréhensible) => action: "NONE", target: null, et dans le champ "reply", liste clairement et poliment toutes les tâches que tu peux accomplir (voir/lister les amis, bloquer/débloquer un utilisateur, ajouter/supprimer un ami, envoyer un message à quelqu'un, ou naviguer sur une page).
 
     EXEMPLES D'ENTRAÎNEMENT ABSOLUS :
