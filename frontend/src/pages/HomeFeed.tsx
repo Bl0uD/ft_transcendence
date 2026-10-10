@@ -43,7 +43,7 @@ export default function HomeFeed() {
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
 
   const [posts, setPosts] = useState<Post[]>([]);
-
+  const [uploadError, setUploadError] = useState('');
   const [menuOpenPostId, setMenuOpenPostId] = useState<number | null>(null);
 
   const deletePost = async (postId: number) => {
@@ -160,15 +160,32 @@ export default function HomeFeed() {
     e.preventDefault();
     if (!newPostContent.trim() && !newPostImage) return;
     setIsPosting(true);
+    setUploadError(''); // Réinitialise l'erreur précédente
+
     try {
       const formData = new FormData();
-      formData.append('content', newPostContent); formData.append('isPublic', isPublicPost.toString());
+      formData.append('content', newPostContent); 
+      formData.append('isPublic', isPublicPost.toString());
       if (newPostImage) formData.append('image', newPostImage);
+    
       const res = await api.post('/posts', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    
       setPosts([{...res.data, likes: [], comments: [], _count: { likes: 0, comments: 0 }}, ...posts]);
-      setNewPostContent(''); setNewPostImage(null); setNewPostPreview(null);
+      setNewPostContent(''); 
+      setNewPostImage(null); 
+      setNewPostPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (err) {} finally { setIsPosting(false); }
+    
+    } catch (err: any) {
+      // Intercepte l'erreur 400 renvoyée par le MagicBytesValidationPipe
+      if (err.response?.status === 400) {
+        setUploadError(err.response.data.message || "Le fichier envoyé n'est pas une image valide.");
+      } else {
+        setUploadError("Une erreur est survenue lors de la publication.");
+      }
+    } finally { 
+      setIsPosting(false); 
+    }
   };
 
   const toggleLike = async (postId: number) => {
@@ -258,6 +275,11 @@ export default function HomeFeed() {
                         </select>
                       </div>
                     </div>
+					{uploadError && (
+					<div className="p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">
+						{uploadError}
+					</div>
+					)}
                     <button type="submit" disabled={isPosting || (!newPostContent.trim() && !newPostImage)} className="w-full sm:w-auto bg-primary text-primary-content hover:bg-primary-hover px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold disabled:opacity-50 transition-colors shadow-sm">Publier</button>
                   </div>
                 </form>
