@@ -19,14 +19,15 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
 
   const refreshToken = useAuthStore((state: any) => state.refreshToken);
   const logout = useAuthStore((state: any) => state.logout);
+  const requires2FA = useAuthStore((state: any) => state.requires2FA);
   const updateFriendStatus = useSocialStore((state: any) => state.updateFriendStatus);
   const navigate = useNavigate();
   
   const token = localStorage.getItem('access_token');
 
   useEffect(() => {
-    // Si l'utilisateur n'est pas authentifié, on coupe et on nettoie ce namespace
-    if (!token) {
+    // Si l'utilisateur n'est pas authentifié ou doit passer la 2FA, on coupe et on nettoie ce namespace
+    if (!token || requires2FA) {
       if (socketCache[namespace]) {
         socketCache[namespace].disconnect();
         delete socketCache[namespace];
@@ -76,8 +77,21 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
 
     const handleDisconnect = (reason: Socket.DisconnectReason) => {
       setIsConnected(false);
-      if (reason === 'io server disconnect') {
+      // On ne reconnecte plus aveuglément si c'est une déconnexion serveur (ça peut être une 403)
+      // Socket.io le gère si on le laisse faire, ou bien on écoute auth_error
+      if (reason === 'io server disconnect' && !authError) {
         currentSocket.connect();
+      }
+    };
+
+    const handleAuthError = async (err: { message: string }) => {
+      setIsConnected(false);
+      if (err.message.includes('2FA validation required') || err.message.includes('jwt expired') || err.message.includes('Aucun jeton')) {
+         // Si c'est juste la 2FA on attend. Sinon on déconnecte
+         if (!err.message.includes('2FA')) {
+             logout();
+             navigate('/');
+         }
       }
     };
 
@@ -92,6 +106,7 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
     currentSocket.on('connect', handleConnect);
     currentSocket.on('connect_error', handleConnectError);
     currentSocket.on('disconnect', handleDisconnect);
+    currentSocket.on('auth_error', handleAuthError);
     
     // On n'écoute la présence en ligne que sur le socket global ('/')
     if (namespace === '/') {
@@ -109,13 +124,14 @@ export const useSocket = (namespace: string = '/'): UseSocketReturn => {
       currentSocket.off('connect', handleConnect);
       currentSocket.off('connect_error', handleConnectError);
       currentSocket.off('disconnect', handleDisconnect);
+      currentSocket.off('auth_error', handleAuthError);
       
       if (namespace === '/') {
         currentSocket.off('user_connected', handleUserConnected);
         currentSocket.off('user_disconnected', handleUserDisconnected);
       }
     };
-  }, [namespace, token, refreshToken, logout, navigate, updateFriendStatus]);
+  }, [namespace, token, requires2FA, refreshToken, logout, navigate, updateFriendStatus]);
 
   return { socket, isConnected, authError };
 };
