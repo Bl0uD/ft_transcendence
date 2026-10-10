@@ -11,17 +11,10 @@ export class FortyTwoStrategy extends PassportStrategy(Strategy, '42') {
       clientSecret: process.env.FORTYTWO_APP_SECRET,
       callbackURL: process.env.FORTYTWO_CALLBACK_URL,
     });
-	console.log("UID 42 :", process.env.FORTYTWO_APP_ID);
   }
 
   async validate(accessToken: string, refreshToken: string, profile: any): Promise<any> {
-	  
-	console.log("==================== PROFIL 42 BRUT ====================");
-	console.log(JSON.stringify(profile, null, 2));
-	console.log("========================================================");
-	console.log("Photos reçues :", profile.photos);
-	console.log("Image JSON :", profile._json?.image);
-	
+
     const user = {
       fortyTwoId: profile.id.toString(),
       email: profile.emails[0].value,

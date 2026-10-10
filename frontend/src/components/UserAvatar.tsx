@@ -25,7 +25,9 @@ export default function UserAvatar({
   // Classes de base (arrondi, comportement au clic, fusion avec la taille passée)
   const baseClasses = `rounded-full shrink-0 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-primary transition-all' : ''} ${className}`;
 
-  if (!avatarUrl || hasError) {
+  const isDefaultAvatar = avatarUrl === '/assets/default-avatar.png' || avatarUrl?.includes('default-avatar.png');
+
+  if (!avatarUrl || isDefaultAvatar || hasError) {
     return (
       <div
         onClick={onClick}

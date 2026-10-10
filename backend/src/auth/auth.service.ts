@@ -63,8 +63,6 @@ export class AuthService {
     if (bodyOrUser.identifier && bodyOrUser.password) {
       
       const cleanIdentifier = bodyOrUser.identifier.trim();
-      
-      console.log(`🔍 [LOGIN] Tentative avec l'identifiant : "${cleanIdentifier}"`);
 
       user = await this.prisma.user.findFirst({
         where: {
@@ -74,8 +72,6 @@ export class AuthService {
           ],
         },
       });
-
-      console.log(`👤 [LOGIN] Résultat en base de données :`, user ? `Trouvé (${user.username})` : `NON TROUVÉ`);
 
       if (!user) {
         throw new UnauthorizedException(`Aucun compte trouvé pour l'identifiant : ${bodyOrUser.identifier}`);

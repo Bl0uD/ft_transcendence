@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
+import { RegisterDto } from './dto/register.dto';
 import { TwoFactorAuthService } from './2fa/two-factor-auth.service';
 import { JwtTwoFactorGuard } from './2fa/jwt-two-factor.guard';
 import { UsersService } from '../users/users.service';
@@ -16,7 +17,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() body: any) {
+  async register(@Body() body: RegisterDto) {
     const user = await this.authService.register(body);
     return {
       message: "Utilisateur cree avec succes en base de donnees !",

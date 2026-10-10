@@ -27,14 +27,8 @@ export class ChatController {
 
   @Post('channels/dm')
   async startDirectMessage(@Body('targetUserId') targetUserId: number, @Req() req: any) {
-    console.log("Token Décrypté (req.user) :", req.user);
-
     const rawUserId = req.user?.sub || req.user?.id || req.user?.userId;
     const userId = Number(rawUserId);
-    
-    console.log("---- TENTATIVE DE CRÉATION DE DM ----");
-    console.log("Mon ID (userId) :", userId);
-    console.log("ID de la cible (targetUserId) :", targetUserId);
 
     if (!rawUserId || isNaN(userId) || isNaN(targetUserId)) {
       throw new Error(`Erreur : Impossible de lire l'ID. rawUserId=${rawUserId}`);

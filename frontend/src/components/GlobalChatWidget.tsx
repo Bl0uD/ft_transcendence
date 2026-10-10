@@ -430,14 +430,14 @@ export const GlobalChatWidget: React.FC = () => {
               </ul>
             ) : (
               <>
-                <div ref={chatScrollRef} className="flex-1 p-3 sm:p-4 overflow-y-auto custom-scrollbar flex flex-col gap-3 min-h-0">
+                <div ref={chatScrollRef} className="flex-1 p-3 sm:p-4 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col gap-3 min-h-0">
                   {messages.map((msg, index) => {
                     const isMe = msg.senderId === user.id || msg.sender?.id === user.id;
                     const senderName = msg.sender ? getDisplayName(msg.sender) : (msg.senderName || 'Utilisateur');
 
                     return (
                       <div key={msg.id || index} className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex gap-2 max-w-[90%] sm:max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`flex gap-2 min-w-0 max-w-[90%] sm:max-w-[85%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
 
                           {!isMe && (
                             <div className="flex-shrink-0 flex flex-col justify-end pb-1">
@@ -472,7 +472,7 @@ export const GlobalChatWidget: React.FC = () => {
 
                   {typingUsers.length > 0 && (
                     <div className="flex w-full justify-start mt-1 mb-2">
-                      <div className="flex gap-2 max-w-[90%] sm:max-w-[85%] flex-row">
+                      <div className="flex gap-2 min-w-0 max-w-[90%] sm:max-w-[85%] flex-row">
                         <div className="flex flex-col min-w-0">
                           <span className="text-[10px] sm:text-xs text-text-muted font-medium mb-1 pl-1 font-rounded truncate">
                             {typingUsers.map(u => u.name).join(', ')} {typingUsers.length > 1 ? 'sont' : 'est'} en train d'écrire...
