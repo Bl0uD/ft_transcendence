@@ -182,7 +182,7 @@ export default function PublicProfile() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) return setSettingStatus({ type: 'error', message: 'Fichier trop lourd (Max: 2MB).' });
-      if (!file.type.startsWith('image/')) return setSettingStatus({ type: 'error', message: 'Image invalide.' });
+      if (!file.type.startsWith('image/') && !file.name.match(/\.(heic|heif)$/i)) return setSettingStatus({ type: 'error', message: 'Image invalide.' });
       setAvatarFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setSettingStatus({ type: 'idle', message: '' });
