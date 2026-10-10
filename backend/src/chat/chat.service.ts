@@ -28,6 +28,10 @@ export class ChatService {
       include: {
         members: {
           include: { user: { select: { id: true, username: true, nickname: true, avatar: true } } }
+        },
+        messages: {
+          orderBy: { id: 'desc' },
+          take: 1
         }
       },
       orderBy: { updatedAt: 'desc' },
