@@ -124,8 +124,13 @@ export const GlobalChatWidget: React.FC = () => {
       }
     };
     socket.on('rooms_updated', handleGlobalUpdate);
+    socket.on('socialUpdate', handleGlobalUpdate);
     socket.on('receive_message', handleGlobalReceiveMessage); 
-    return () => { socket.off('rooms_updated', handleGlobalUpdate); socket.off('receive_message', handleGlobalReceiveMessage); };
+    return () => { 
+      socket.off('rooms_updated', handleGlobalUpdate); 
+      socket.off('socialUpdate', handleGlobalUpdate);
+      socket.off('receive_message', handleGlobalReceiveMessage); 
+    };
   }, [isConnected, socket, user, incrementUnread]); 
 
   useEffect(() => {
@@ -503,7 +508,8 @@ export const GlobalChatWidget: React.FC = () => {
 
                 <form onSubmit={handleSendChatMessage} className="p-3 bg-surface border-t border-border flex gap-2 items-center shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
                   <input 
-                    type="text" 
+                    type="text"
+                    maxLength={1000}
                     value={chatInput} 
                     onChange={(e) => {
                       setChatInput(e.target.value);
