@@ -144,7 +144,10 @@ export const GlobalChatWidget: React.FC = () => {
     }
 
     const handleHistory = (hist: Message[]) => { if (Array.isArray(hist)) setMessages(hist); };
-    const handleReceiveMessage = (msg: Message) => { setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); };
+    const handleReceiveMessage = (msg: Message) => { 
+      if (msg.channelId && msg.channelId !== activeRoom) return;
+      setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); 
+    };
 
     const handleUserTyping = (data: { userId: number, channelId: number, username?: string }) => {
       if (data.userId === user?.id) return;
