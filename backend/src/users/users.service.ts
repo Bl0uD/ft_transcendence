@@ -7,7 +7,13 @@ import * as bcrypt from 'bcrypt';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly internalUsernames = ['Assistant IA', 'Gemini IA', 'Bot IA'];
+
   async getPublicProfile(username: string) {
+    if (this.internalUsernames.includes(username)) {
+      throw new NotFoundException("Cet utilisateur n'existe pas.");
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { username: username },
       select: {
@@ -28,6 +34,7 @@ export class UsersService {
   async searchUsers(query: string) {
     const users = await this.prisma.user.findMany({
       where: {
+        username: { notIn: this.internalUsernames },
         OR: [
           { username: { contains: query, mode: 'insensitive' } },
           { nickname: { contains: query, mode: 'insensitive' } },

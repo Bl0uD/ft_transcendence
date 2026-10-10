@@ -14,7 +14,7 @@ export class ChatController {
     const rawMessages = await this.chatService.getChannelMessages(Number(channelId), userId);
     
     return rawMessages.map((msg) => ({
-      role: msg.sender?.username === 'Bot IA' ? 'ai' : 'user',
+      role: msg.sender?.username === 'Assistant IA' || msg.sender?.username === 'Bot IA' ? 'ai' : 'user',
       content: msg.content,
     }));
   }
