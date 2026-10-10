@@ -404,13 +404,14 @@ export default function PublicProfile() {
                 </div>
               ) : (
                 posts.map((post) => (
-                  <div key={post.id} className="w-full bg-surface rounded-2xl border border-border shadow-sm flex flex-col">
+                  <div key={post.id} className={`w-full bg-surface rounded-2xl border border-border shadow-sm flex flex-col ${post.isHidden ? "opacity-60 saturate-50" : ""}`}>
                     <div className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
                       <UserAvatar avatarUrl={post.author.avatar} username={getDisplayName(post.author)} className="w-10 h-10 sm:w-12 sm:h-12 border border-border shrink-0" onClick={() => navigate(`/user/${post.author.username}`)} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold font-rounded text-sm sm:text-base text-text-main cursor-pointer hover:underline truncate" onClick={() => navigate(`/user/${post.author.username}`)}>{getDisplayName(post.author)}</span>
                           <span className="text-[10px] uppercase font-bold text-text-muted bg-surface-hover px-2 py-0.5 rounded-md border border-border">{post.isPublic ? <><GlobeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Public</> : <><FriendsIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Amis</>}</span>
+                          {post.isHidden && <span className="text-[10px] uppercase font-bold text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20"><ClosedEyeIcon className="w-3.5 h-3.5 inline mr-1 -mt-0.5" /> Masqué</span>}
                         </div>
                         <span className="text-[11px] sm:text-xs text-text-muted">{new Date(post.createdAt).toLocaleString()}</span>
                       </div>

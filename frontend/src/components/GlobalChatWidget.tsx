@@ -54,7 +54,7 @@ export const GlobalChatWidget: React.FC = () => {
   }, [activeRoom]);
   const [chatInput, setChatInput] = useState('');
 
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiLoadingRoomId, setAiLoadingRoomId] = useState<number | null>(null);
   const [aiCooldown, setAiCooldown] = useState(0);
 
   const [aiProvider, setAiProvider] = useState<'ollama' | 'gemini'>('ollama');
@@ -202,7 +202,7 @@ export const GlobalChatWidget: React.FC = () => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, isChatOpen, isAiLoading, typingUsers]);
+  }, [messages, isChatOpen, aiLoadingRoomId, typingUsers]);
 
   const toggleAiProvider = () => {
     const newProvider = aiProvider === 'ollama' ? 'gemini' : 'ollama';
@@ -227,10 +227,12 @@ export const GlobalChatWidget: React.FC = () => {
     setChatInput('');
 
     if (isAiRoom) {
-      if (isAiLoading || aiCooldown > 0) return; 
+      if (aiLoadingRoomId !== null || aiCooldown > 0) return; 
 
       setMessages(prev => [...prev, { id: Date.now(), senderId: user.id, senderName: user.username, content: content }]);
-      setIsAiLoading(true);
+      setAiLoadingRoomId(activeRoom);
+
+      const roomWhenSent = activeRoom;
 
       try {
         const aiAvatar = getAiMessageAvatar(currentRoom?.name, aiProvider);
@@ -245,6 +247,9 @@ export const GlobalChatWidget: React.FC = () => {
           content,
           aiProvider,
           (chunk) => {
+            // Empêche le texte de s'écrire dans la mauvaise room si l'utilisateur change d'onglet !
+            if (useChatStore.getState().activeRoom !== roomWhenSent) return;
+
             if (typeof chunk === 'string') {
               // GEMINI : flux de texte en continu
               setMessages(prev => {
@@ -286,11 +291,15 @@ export const GlobalChatWidget: React.FC = () => {
           },
           () => { setAiCooldown(60); }
         );
-        setIsAiLoading(false); 
+        setAiLoadingRoomId(null); 
       } catch (error) {
         console.log(error);
         setIsAiLoading(false);
         setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: localAiAvatar }, content: "Impossible de joindre l'API." }]);
+        /*setAiLoadingRoomId(null);
+        if (useChatStore.getState().activeRoom === roomWhenSent) {
+          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', content: "Impossible de joindre l'API." }]);*/
+        //}
       }
 
     } else {
@@ -528,7 +537,7 @@ export const GlobalChatWidget: React.FC = () => {
                     </div>
                   )}
 
-                  {isAiLoading && (
+                  {aiLoadingRoomId === activeRoom && (
                     <div className="flex w-full justify-start mt-2">
                       <div className="p-3 rounded-2xl text-xs sm:text-sm bg-surface-hover text-text-muted border border-border rounded-bl-sm shadow-sm italic animate-pulse">
                         L'IA réfléchit...
@@ -553,12 +562,12 @@ export const GlobalChatWidget: React.FC = () => {
                       }
                     }} 
                     placeholder={isCurrentRoomAi && aiCooldown > 0 ? `Attendez ${aiCooldown}s...` : "Écrire un message..."} 
-                    disabled={isCurrentRoomAi && (isAiLoading || aiCooldown > 0)}
+                    disabled={isCurrentRoomAi && (aiLoadingRoomId !== null || aiCooldown > 0)}
                     className="flex-1 min-w-0 bg-bg border border-border rounded-full px-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-primary disabled:opacity-50 text-text-main" 
                   />
                   <button 
                     type="submit" 
-                    disabled={!chatInput.trim() || (isCurrentRoomAi && (isAiLoading || aiCooldown > 0))} 
+                    disabled={!chatInput.trim() || (isCurrentRoomAi && (aiLoadingRoomId !== null || aiCooldown > 0))} 
                     className="bg-primary text-primary-content w-10 h-10 rounded-full flex items-center justify-center shrink-0 disabled:opacity-50 hover:bg-primary-hover transition-colors text-sm"
                   >
                     ➤

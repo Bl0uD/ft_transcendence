@@ -50,8 +50,9 @@ export class FriendsGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
         this.sendInitialStatusesToClient(client, Number(userId));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('[FriendsGateway] Invalid token during connection.');
+      client.emit('auth_error', { message: e.message || 'Invalid token' });
       client.disconnect();
     }
   }
