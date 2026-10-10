@@ -232,11 +232,15 @@ export default function PublicProfile() {
     e.preventDefault();
     const content = commentInputs[postId];
     if (!content?.trim()) return;
+    
+    setCommentInputs(prev => ({ ...prev, [postId]: '' })); // Clear immediately to prevent double clicks
+    
     try {
       const res = await api.post(`/posts/${postId}/comment`, { content });
       setPosts(posts.map(post => post.id === postId ? { ...post, comments: [...post.comments, res.data], _count: { ...post._count, comments: post._count.comments + 1 } } : post));
-      setCommentInputs({ ...commentInputs, [postId]: '' });
-    } catch (err) {}
+    } catch (err) {
+      setCommentInputs(prev => ({ ...prev, [postId]: content })); // Restore on error
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-bg flex items-center justify-center text-text-main">Chargement...</div>;
