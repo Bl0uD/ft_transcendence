@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseIn
 import { PostsService } from './posts.service';
 import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { MagicBytesValidationPipe } from '../common/pipes/magic-bytes-validation.pipe';
+import { MagicBytesValidationPipe } from '../pipes/magic-bytes-validation.pipe';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { Public } from '../auth/public.decorator';
