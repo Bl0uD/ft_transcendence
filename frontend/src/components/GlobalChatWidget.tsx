@@ -133,6 +133,14 @@ export const GlobalChatWidget: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (activeRoom !== null && activeRoom > 0 && rooms.length > 0) {
+      if (!rooms.some((r: Room) => r.id === activeRoom)) {
+        fetchRooms();
+      }
+    }
+  }, [activeRoom, rooms.length]);
+
+  useEffect(() => {
     if (!isConnected || !socket || !user) return;
     const handleGlobalUpdate = () => fetchRooms();
     const handleGlobalReceiveMessage = (msg: Message) => {
@@ -332,7 +340,7 @@ export const GlobalChatWidget: React.FC = () => {
   };
 
   const getRoomDisplayInfo = (room?: Room) => {
-    if (!room) return { name: 'Chargement...', icon: <span className="text-xl">⏳</span>, targetUser: null };
+    if (!room) return { name: 'Chargement...', icon: <span className="text-xl tracking-widest font-bold leading-none pb-1">...</span>, targetUser: null };
     if (room.type === 'DIRECT' || room.name?.startsWith('dm_')) {
       const otherMember = room.members?.find(m => m.userId !== user?.id);
       if (otherMember?.user) return { name: getDisplayName(otherMember.user), icon: <ChatIcon className="w-5 h-5 text-current" />, targetUser: otherMember.user };
