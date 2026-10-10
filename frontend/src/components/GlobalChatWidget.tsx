@@ -159,7 +159,7 @@ export const GlobalChatWidget: React.FC = () => {
       if (msg.channelId) {
         const storeState = useChatStore.getState();
         if (storeState.activeRoom === msg.channelId && storeState.isChatOpen) {
-           storeState.setLastReadMessageId(msg.channelId, msg.id!);
+           storeState.setLastReadMessageId(msg.channelId, Number(msg.id));
         } else if (msg.senderId !== user.id && msg.sender?.id !== user.id) {
            storeState.incrementUnread(msg.channelId);
         }
@@ -195,7 +195,7 @@ export const GlobalChatWidget: React.FC = () => {
       if (Array.isArray(hist)) {
          setMessages(hist);
          if (hist.length > 0) {
-            useChatStore.getState().setLastReadMessageId(activeRoom, hist[hist.length - 1].id!);
+            useChatStore.getState().setLastReadMessageId(activeRoom, Number(hist[hist.length - 1].id));
          }
       }
     };
