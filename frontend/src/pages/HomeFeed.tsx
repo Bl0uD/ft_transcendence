@@ -257,7 +257,18 @@ export default function HomeFeed() {
                 <form onSubmit={submitPost} className="flex flex-col gap-3 sm:gap-4">
                   <div className="flex gap-3 sm:gap-4">
                     <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-9 h-9 sm:w-10 sm:h-10 border border-border-subtle shrink-0" onClick={() => navigate(`/user/${user.username}`)} />
-                    <textarea placeholder={`Quoi de neuf, ${getDisplayName(user)} ?`} value={newPostContent} onChange={(e) => setNewPostContent(e.target.value)} className="flex-1 bg-surface/50 rounded-lg py-2.5 sm:py-3 px-3 sm:px-4 border border-border focus:border-primary focus:outline-none resize-none min-h-[75px] text-xs sm:text-sm" />
+                    <div className="flex-1 relative">
+                      <textarea 
+                        placeholder={`Quoi de neuf, ${getDisplayName(user)} ?`} 
+                        value={newPostContent} 
+                        maxLength={5000}
+                        onChange={(e) => setNewPostContent(e.target.value)} 
+                        className="w-full bg-surface/50 rounded-lg py-2.5 sm:py-3 px-3 sm:px-4 pb-6 border border-border focus:border-primary focus:outline-none resize-none min-h-[75px] text-xs sm:text-sm" 
+                      />
+                      <div className={`absolute bottom-2 right-2 text-[10px] font-medium pointer-events-none ${newPostContent.length >= 5000 ? 'text-red-500' : 'text-text-muted'}`}>
+                        {newPostContent.length}/5000
+                      </div>
+                    </div>
                   </div>
                   {newPostPreview && (
                     <div className="relative ml-0 sm:ml-14">
@@ -268,7 +279,7 @@ export default function HomeFeed() {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 ml-0 sm:ml-14">
                     <div className="flex gap-3 sm:gap-4 items-center justify-between sm:justify-start">
                       <button type="button" title="Ajouter une image" onClick={() => fileInputRef.current?.click()} className="text-primary flex items-center justify-center p-2 rounded-full hover:bg-primary/10 transition-colors"><PhotoIcon className="w-6 h-6 sm:w-7 sm:h-7" /></button>
-                      <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={(e) => {const f = e.target.files?.[0]; if(f){setNewPostImage(f); setNewPostPreview(URL.createObjectURL(f));}}} />
+                      <input type="file" accept="image/*,.heic,.heif,.gif" className="hidden" ref={fileInputRef} onChange={(e) => {const f = e.target.files?.[0]; if(f){setNewPostImage(f); setNewPostPreview(URL.createObjectURL(f));}}} />
                       
                       <div className="relative flex items-center">
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 -mt-[1.5px] text-text-muted pointer-events-none flex items-center justify-center">
