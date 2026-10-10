@@ -283,8 +283,8 @@ export default function PublicProfile() {
                   <UserAvatar avatarUrl={previewUrl} username={settingUsername} className="w-full h-full text-3xl sm:text-4xl shadow-md transition group-hover:opacity-75" />
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition bg-black/50 rounded-full"><span className="text-text-main text-xs px-2 py-1 bg-black/80 rounded">Modifier</span></div>
                 </div>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/jpeg, image/png, image/webp" className="hidden" />
-                <p className="text-xs text-text-muted">JPG, PNG, WEBP (Max: 2MB)</p>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/jpeg, image/png, image/webp, image/heic, image/heif, image/gif" className="hidden" />
+                <p className="text-xs text-text-muted">JPG, PNG, WEBP, HEIC, GIF (Max: 2MB)</p>
               </div>
               <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nom d'utilisateur</label><input type="text" value={settingUsername} onChange={(e) => setSettingUsername(e.target.value)} required minLength={3} maxLength={20} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
               <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Surnom (Optionnel)</label><input type="text" value={settingNickname} onChange={(e) => setSettingNickname(e.target.value)} maxLength={20} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>

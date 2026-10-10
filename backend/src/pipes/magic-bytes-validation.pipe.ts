@@ -12,7 +12,7 @@ export class MagicBytesValidationPipe implements PipeTransform {
       const getFileType = ft.fromFile || ft.fileTypeFromFile;
       
       const fileType = await getFileType(file.path);
-      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'image/gif'];
 
       if (!fileType || !allowedMimeTypes.includes(fileType.mime)) {
         fs.unlinkSync(file.path);
