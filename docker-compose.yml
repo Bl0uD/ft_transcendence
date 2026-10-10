@@ -103,6 +103,10 @@ services:
     image: ollama/ollama:latest
     container_name: transcendence_ai
     restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     env_file:
       - .env
     volumes:
@@ -119,7 +123,13 @@ services:
       timeout: 5s
       retries: 30
       start_period: 10s
-
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 networks:
   front_net:
     driver: bridge
