@@ -93,6 +93,20 @@ export const GlobalChatWidget: React.FC = () => {
         }
       }
 
+      // Restauration des pastilles pour les messages reçus hors-ligne
+      const storeState = useChatStore.getState();
+      fetchedRooms.forEach((r: any) => {
+        if (r.messages && r.messages.length > 0) {
+          const lastMsg = r.messages[0];
+          const lastReadId = storeState.lastReadIds[r.id] || 0;
+          if (lastMsg.senderId !== user.id && lastMsg.id > lastReadId) {
+             if (!storeState.unreadCounts[r.id]) {
+                 storeState.incrementUnread(r.id);
+             }
+          }
+        }
+      });
+
       setRooms(fetchedRooms);
     } catch (err) {
       console.error("Erreur salons:", err);
@@ -134,8 +148,13 @@ export const GlobalChatWidget: React.FC = () => {
         for (let i = 0; i < 100; i++) processedMessageIds.delete(iterator.next().value!);
       }
 
-      if (msg.channelId && msg.senderId !== user.id && msg.sender?.id !== user.id) {
-        incrementUnread(msg.channelId);
+      if (msg.channelId) {
+        const storeState = useChatStore.getState();
+        if (storeState.activeRoom === msg.channelId && storeState.isChatOpen) {
+           storeState.setLastReadMessageId(msg.channelId, msg.id!);
+        } else if (msg.senderId !== user.id && msg.sender?.id !== user.id) {
+           storeState.incrementUnread(msg.channelId);
+        }
       }
     };
     socket.on('rooms_updated', handleGlobalUpdate);
@@ -164,7 +183,14 @@ export const GlobalChatWidget: React.FC = () => {
       return; 
     }
 
-    const handleHistory = (hist: Message[]) => { if (Array.isArray(hist)) setMessages(hist); };
+    const handleHistory = (hist: Message[]) => { 
+      if (Array.isArray(hist)) {
+         setMessages(hist);
+         if (hist.length > 0) {
+            useChatStore.getState().setLastReadMessageId(activeRoom, hist[hist.length - 1].id!);
+         }
+      }
+    };
     const handleReceiveMessage = (msg: Message) => { 
       if (msg.channelId && msg.channelId !== activeRoom) return;
       setMessages((prev) => prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]); 
