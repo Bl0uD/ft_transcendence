@@ -1,12 +1,12 @@
 import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseInterceptors, UploadedFile, Delete, Patch, BadRequestException } from '@nestjs/common';
 import { PostsService } from './posts.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { Public } from '../auth/public.decorator';
 
-@UseGuards(JwtAuthGuard) 
+@UseGuards(JwtTwoFactorGuard) 
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}

@@ -66,6 +66,6 @@ clean:
 # Supprime les conteneurs, les images ET les volumes de données (Postgres & Ollama)
 fclean:
 	$(COMPOSE) down -v --rmi all --remove-orphans
-	@echo "✨ Tout est propre. Les volumes de données ont été détruits."
+	@echo "Les volumes de données ont été détruits."
 
 .PHONY: all up build down down-v re restart logs ps prisma-push clean fclean help

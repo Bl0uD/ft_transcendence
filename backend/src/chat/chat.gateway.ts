@@ -11,6 +11,8 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChatService } from './chat.service';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
+import { SendMessageDto } from './dto/send-message.dto';
 
 @WebSocketGateway({
   namespace: 'chat',
@@ -46,6 +48,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) throw new Error('Utilisateur inexistant');
+
+      if (user.isTwoFactorEnabled && !payload.isTwoFactorAuthenticated) {
+        throw new Error('2FA validation required');
+      }
 
       client.data.user = { ...payload, sub: userId, id: userId };
       
@@ -113,10 +119,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @SubscribeMessage('send_message')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { channelId: number; content: string }, 
+    @MessageBody() payload: SendMessageDto, 
   ) {
     const userId = client.data.user?.sub;
     const channelId = Number(payload?.channelId);
