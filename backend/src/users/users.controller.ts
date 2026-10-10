@@ -3,7 +3,7 @@ import {
   UploadedFile, BadRequestException 
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { MagicBytesValidationPipe } from '../common/pipes/magic-bytes-validation.pipe';
+import { MagicBytesValidationPipe } from '../pipes/magic-bytes-validation.pipe';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { UsersService } from './users.service';
