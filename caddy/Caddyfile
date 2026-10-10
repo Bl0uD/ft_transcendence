@@ -16,12 +16,8 @@ localhost {
         reverse_proxy backend:3000
     }
 
-    # 4. Routes d'authentification vers NestJS (NOUVEAU)
+    # 4. Routes d'authentification vers NestJS
     handle /auth/* {
-        reverse_proxy backend:3000
-    }
-
-    handle /ws/* {
         reverse_proxy backend:3000
     }
 
