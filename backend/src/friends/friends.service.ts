@@ -19,7 +19,7 @@ export class FriendsService {
     });
 
     if (!targetUser) {
-      throw new NotFoundException(`L'utilisateur "${targetUsername}" n'existe pas.`);
+      throw new NotFoundException('Utilisateur introuvable');
     }
 
     const addresseeId = targetUser.id;
@@ -45,7 +45,7 @@ export class FriendsService {
         throw new ConflictException('Une demande est déjà en attente entre vous.');
       }
       if (existing.status === FriendshipStatus.BLOCKED) {
-        throw new ForbiddenException('Action impossible.');
+        throw new NotFoundException('Utilisateur introuvable');
       }
     }
 

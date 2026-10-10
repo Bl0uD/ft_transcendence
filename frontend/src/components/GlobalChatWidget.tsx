@@ -7,6 +7,7 @@ import api from '../api/axios';
 import UserAvatar from './UserAvatar';
 import { streamAIChat } from '../api/aiApi'; 
 import { ChatIcon, RobotIcon, FriendsIcon, MinimizeIcon, MaximizeIcon } from './HeaderIcons';
+import { useSocialStore } from '../store/socialStore';
 
 // --- INTERFACES ---
 interface User { id: number; username: string; nickname?: string | null; avatar?: string | null; }
@@ -38,6 +39,7 @@ export const GlobalChatWidget: React.FC = () => {
   const { socket, isConnected } = useSocket('/chat');
 
   const { isChatOpen, setIsChatOpen, activeRoom, setActiveRoom, unreadCounts, incrementUnread } = useChatStore();
+  const blockedUsers = useSocialStore((state: any) => state.blockedUsers);
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -73,6 +75,14 @@ export const GlobalChatWidget: React.FC = () => {
       if (currentActive === -1 && realAiRoom) setActiveRoom(realAiRoom.id);
       if (currentActive === -2 && realGeminiRoom) setActiveRoom(realGeminiRoom.id);
 
+      // Si la room active n'existe plus (ex: blocage), on la ferme
+      if (currentActive !== null && currentActive > 0) {
+        if (!fetchedRooms.some((r: Room) => r.id === currentActive)) {
+          setActiveRoom(null);
+          setIsChatOpen(false);
+        }
+      }
+
       setRooms(fetchedRooms);
     } catch (err) {
       console.error("Erreur salons:", err);
@@ -80,11 +90,9 @@ export const GlobalChatWidget: React.FC = () => {
   };
 
   useEffect(() => {
-    if (activeRoom !== null && user) {
-      const roomExists = rooms.some(r => r.id === activeRoom);
-      if (!roomExists) fetchRooms();
-    }
-  }, [activeRoom, user, rooms]);
+    if (!user) { setIsChatOpen(false); return; }
+    fetchRooms();
+  }, [blockedUsers, user]);
 
   useEffect(() => {
     if (aiCooldown <= 0) return;
@@ -92,10 +100,7 @@ export const GlobalChatWidget: React.FC = () => {
     return () => clearInterval(timer);
   }, [aiCooldown]);
 
-  useEffect(() => {
-    if (!user) { setIsChatOpen(false); return; }
-    fetchRooms();
-  }, [user]);
+
 
   useEffect(() => {
     const handleOpenChat = (e: CustomEvent<{ roomId: number }>) => { setIsChatOpen(true); setActiveRoom(e.detail.roomId); };

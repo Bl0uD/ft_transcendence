@@ -94,7 +94,13 @@ export class PostsService {
     });
 
     if (relation && relation.status === FriendshipStatus.BLOCKED) {
-      throw new ForbiddenException("Vous ne pouvez pas voir les publications de cet utilisateur.");
+      if (relation.requesterId === requesterId) {
+        // C'est nous qui l'avons bloqué : on retourne juste un mur vide
+        return [];
+      } else {
+        // C'est lui qui nous a bloqué
+        throw new ForbiddenException("Vous ne pouvez pas voir les publications de cet utilisateur.");
+      }
     }
 
     const isFriend = relation && relation.status === FriendshipStatus.ACCEPTED;

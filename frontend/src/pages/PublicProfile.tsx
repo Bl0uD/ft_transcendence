@@ -112,25 +112,19 @@ export default function PublicProfile() {
         const userData = profileRes.data;
         setProfileData(userData); 
 
-        const weBlockedThem = useSocialStore.getState().blockedUsers.some((u: any) => u.id === userData.id);
-
         try {
           const postsRes = await api.get(`/posts/user/${userData.id}`);
           setPosts(postsRes.data);
         } catch (postErr: any) {
           if (postErr.response?.status === 403) {
-            if (weBlockedThem) {
-              setPosts([]);
-            } else {
-              setError("Cet utilisateur n'existe pas ou est indisponible.");
-            }
+            setError("Utilisateur introuvable");
           } else {
-			  console.error("Erreur lors du chargement des publications", postErr);
-			  setPosts([]);
+            console.error("Erreur lors du chargement des publications", postErr);
+            setPosts([]);
           }
         }
       } catch (err: any) {
-        setError("Cet utilisateur n'existe pas ou est indisponible.");
+        setError("Utilisateur introuvable");
       } finally {
         setLoading(false);
       }
