@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Req, UseGuards, ParseIntPipe, UseIn
 import { PostsService } from './posts.service';
 import { JwtTwoFactorGuard } from '../auth/2fa/jwt-two-factor.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { MagicBytesValidationPipe } from '../common/pipes/magic-bytes-validation.pipe';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { Public } from '../auth/public.decorator';
@@ -66,7 +67,7 @@ export class PostsController {
     @Req() req: any,
     @Body('content') content: string,
     @Body('isPublic') isPublic: string,
-    @UploadedFile() file?: Express.Multer.File,
+	@UploadedFile(MagicBytesValidationPipe) file?: Express.Multer.File,
   ) {
     const userId = this.extractUserId(req);
     const isPublicBool = isPublic === 'true';

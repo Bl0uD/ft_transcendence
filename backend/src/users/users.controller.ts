@@ -3,6 +3,7 @@ import {
   UploadedFile, BadRequestException 
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { MagicBytesValidationPipe } from '../common/pipes/magic-bytes-validation.pipe';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { UsersService } from './users.service';
@@ -46,8 +47,8 @@ export class UsersController {
     @Body('nickname') nickname?: string,
     @Body('email') email?: string,
     @Body('password') password?: string,
-    @UploadedFile() file?: Express.Multer.File,
     @Body('is2faAuthenticated') is2faAuthenticated?: boolean,
+    @UploadedFile(MagicBytesValidationPipe) file?: Express.Multer.File,
   ) {
     const userId = req.user?.userId || req.user?.sub;
     let avatar: string | undefined = undefined;
