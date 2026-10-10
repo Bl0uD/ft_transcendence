@@ -41,7 +41,9 @@ export default function SocialSidebar() {
     try {
       await sendRequest(targetUsername.trim());
       setTargetUsername('');
-    } catch(e) {}
+    } catch(e: any) {
+      alert(e.response?.data?.message || "Utilisateur introuvable");
+    }
   };
 
   const FindSuggestions = async (value: string) => {
