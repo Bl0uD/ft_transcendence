@@ -18,5 +18,5 @@ COPY --chown=node:node . .
 # Port par défaut de Vite
 EXPOSE 5173
 
-# Configuration cruciale pour Docker : --host permet à Caddy de communiquer avec Vite
-CMD ["npm", "run", "dev"]
+# En production, on build d'abord le projet puis on le sert avec vite preview
+CMD ["sh", "-c", "npm run build && npm run preview -- --host 0.0.0.0 --port 5173"]

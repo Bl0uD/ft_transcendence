@@ -65,7 +65,7 @@ export class AiService implements OnModuleInit {
     try {
       const ollamaBot = await this.prisma.user.upsert({
         where: { username: 'Bot IA' },
-        update: {},
+        update: { avatar: '/robot.svg' },
         create: {
           username: 'Bot IA',
           email: 'bot-ia@transcendence.internal',
@@ -76,7 +76,7 @@ export class AiService implements OnModuleInit {
 
       const geminiBot = await this.prisma.user.upsert({
         where: { username: 'Gemini IA' },
-        update: {},
+        update: { avatar: '/robot.svg' },
         create: {
           username: 'Gemini IA',
           email: 'gemini-ia@transcendence.internal',
