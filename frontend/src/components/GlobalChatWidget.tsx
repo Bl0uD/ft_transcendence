@@ -270,9 +270,9 @@ export const GlobalChatWidget: React.FC = () => {
       setAiLoadingRoomId(activeRoom);
 
       const roomWhenSent = activeRoom;
+      const aiAvatar = getAiMessageAvatar(currentRoom?.name, aiProvider);
 
       try {
-        const aiAvatar = getAiMessageAvatar(currentRoom?.name, aiProvider);
         const normalizeNavigateTarget = (target?: string) => {
           if (!target) return null;
           const trimmed = String(target).trim();
