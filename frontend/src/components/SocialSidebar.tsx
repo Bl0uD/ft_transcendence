@@ -114,6 +114,7 @@ export default function SocialSidebar() {
           <input 
             type="text" 
             placeholder="Ajouter un ami..." 
+            maxLength={24}
             value={targetUsername} 
             onChange={(e) => {
               setTargetUsername(e.target.value);

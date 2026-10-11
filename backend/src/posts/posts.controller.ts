@@ -69,6 +69,9 @@ export class PostsController {
     @Body('isPublic') isPublic: string,
 	@UploadedFile(MagicBytesValidationPipe) file?: Express.Multer.File,
   ) {
+    if (content && content.length > 5000) {
+      throw new BadRequestException("La publication ne peut pas dépasser 5000 caractères.");
+    }
     const userId = this.extractUserId(req);
     const isPublicBool = isPublic === 'true';
     const imageUrl = file ? `/uploads/posts/${file.filename}` : undefined; 
@@ -88,8 +91,14 @@ export class PostsController {
     @Param('id', ParseIntPipe) postId: number,
     @Body('content') content: string,
   ) {
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      throw new BadRequestException("Le commentaire ne peut pas être vide.");
+    }
+    if (content.length > 500) {
+      throw new BadRequestException("Le commentaire ne peut pas dépasser 500 caractères.");
+    }
     const userId = this.extractUserId(req);
-    return this.postsService.addComment(Number(userId), postId, content);
+    return this.postsService.addComment(Number(userId), postId, content.trim());
   }
 
   @Delete(':id')

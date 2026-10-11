@@ -112,8 +112,8 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
               <div className="text-center"><h2 className="text-2xl sm:text-3xl font-extrabold text-primary">Transcendence</h2></div>
               {loginError && <div className="p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">{loginError}</div>}
               <form className="space-y-4" onSubmit={handleLoginSubmit}>
-                <input type="text" placeholder="Email / Username" required value={identifier} onChange={(e) => setIdentifier(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm text-text-main focus:border-primary focus:outline-none" />
-                <input type="password" placeholder="Mot de passe" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm text-text-main focus:border-primary focus:outline-none" />
+                <input type="text" placeholder="Email / Username" required maxLength={320} value={identifier} onChange={(e) => setIdentifier(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm text-text-main focus:border-primary focus:outline-none" />
+                <input type="password" placeholder="Mot de passe" required maxLength={100} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm text-text-main focus:border-primary focus:outline-none" />
                 <button type="submit" disabled={isLoginLoading} className="w-full bg-primary text-primary-content px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary-hover transition-colors disabled:opacity-50 shadow-sm">{isLoginLoading ? '...' : 'Se connecter'}</button>
               </form>
 
@@ -131,9 +131,9 @@ export default function AuthModals({ isOpen, onClose, initialView = 'login' }: A
             {regSuccess && <div className="p-3 text-xs sm:text-sm text-primary bg-primary/10 border border-primary/30 rounded-xl">{regSuccess} 🎉</div>}
             {regError && <div className="p-3 text-xs sm:text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">{regError}</div>}
             <form className="space-y-4" onSubmit={handleRegisterSubmit}>
-              <input type="text" placeholder="Username" required value={regUsername} onChange={(e) => setRegUsername(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
-              <input type="email" placeholder="Email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
-              <input type="password" placeholder="Mot de passe" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
+              <input type="text" placeholder="Username" required minLength={3} maxLength={24} value={regUsername} onChange={(e) => setRegUsername(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
+              <input type="email" placeholder="Email" required maxLength={320} value={regEmail} onChange={(e) => setRegEmail(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
+              <input type="password" placeholder="Mot de passe" required minLength={6} maxLength={100} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 sm:px-4 py-2 sm:py-2.5 text-sm focus:border-primary focus:outline-none" />
               <div className="flex items-center gap-2 mt-2">
                 <input type="checkbox" id="acceptTerms" required checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="w-4 h-4 rounded border-border text-primary focus:ring-primary bg-bg/50" />
                 <label htmlFor="acceptTerms" className="text-xs sm:text-sm text-text-muted">
