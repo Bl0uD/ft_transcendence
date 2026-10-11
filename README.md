@@ -16,6 +16,8 @@ An interactive social network and modern web platform featuring real-time chat, 
 - **Cross-Site Scripting (XSS) Prevention**: Dual protection via automatic React JSX DOM escaping and backend input sanitization (`sanitize-html`).
 - **File Upload Security**: Strict MIME-type inspection and Magic Bytes binary signature validation (`MagicBytesValidationPipe`) preventing disguised malicious files.
 - **Mass Assignment / Over-Posting Protection**: Global NestJS `ValidationPipe` enforcing DTO whitelisting (`whitelist: true`, `forbidNonWhitelisted: true`).
+- **Rate Limiting & Anti-DoS Defense**: Global `@nestjs/throttler` guard and strict password bounds (max 100 chars) preventing BCrypt CPU saturation and brute-force flooding.
+- **Input Boundaries & Spam Prevention**: Enforced field limits across frontend and backend (comments up to 500 chars, posts up to 5,000 chars, usernames up to 24 chars, emails up to 320 chars).
 
 ### Social Network
 - Public profiles with usernames, nicknames, and avatars.
