@@ -57,8 +57,8 @@ export class PostsController {
     }),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-      if (!file.mimetype.match(/\/(jpg|jpeg|png|webp|heic|heif|gif)$/i) && !file.originalname.match(/\.(jpg|jpeg|png|webp|heic|heif|gif)$/i)) {
-        return cb(new BadRequestException('Seuls les fichiers images (jpg, jpeg, png, webp, heic, gif) sont autorisés.'), false);
+      if (!file.mimetype.match(/\/(jpg|jpeg|png|webp|gif)$/i) && !file.originalname.match(/\.(jpg|jpeg|png|webp|gif)$/i)) {
+        return cb(new BadRequestException('Seuls les fichiers images (jpg, jpeg, png, webp, gif) sont autorisés.'), false);
       }
       cb(null, true);
     },
