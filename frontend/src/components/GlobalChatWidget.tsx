@@ -329,11 +329,14 @@ export const GlobalChatWidget: React.FC = () => {
           () => { setAiCooldown(60); }
         );
         setAiLoadingRoomId(null); 
-      } catch (error) {
+      } catch (error: any) {
         console.log(error);
         setAiLoadingRoomId(null);
         if (useChatStore.getState().activeRoom === roomWhenSent) {
-          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: localAiAvatar }, content: "Impossible de joindre l'API." }]);
+          const errorContent = error?.message === 'Rate limit exceeded'
+            ? "Rate-limit atteint, veuillez patienter avant de renvoyer un message."
+            : "Impossible de joindre l'API.";
+          setMessages((prev) => [...prev, { id: Date.now()+1, senderId: 0, senderName: 'Assistant IA', sender: { id: -1, username: 'Assistant IA', avatar: aiAvatar }, content: errorContent }]);
         }
       }
 
