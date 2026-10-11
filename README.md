@@ -8,14 +8,18 @@ An interactive social network and modern web platform featuring real-time chat, 
 
 ## Features
 
-### Authentication & Security
+### Authentication & Cybersecurity
 - Account registration, login, and secure OAuth2 login through the 42 API.
 - JWT sessions with optional TOTP Two-Factor Authentication (2FA) protected by a QR code setup flow.
-- Routes and conversations protected by JWT, 2FA, and blocking relationships.
+- Routes, posts, and conversations strictly protected by JWT, 2FA guards, and bidirectional blocking relationships.
+- **SQL Injection (SQLi) Protection**: Guaranteed via Prisma ORM parameterized queries and prepared statements.
+- **Cross-Site Scripting (XSS) Prevention**: Dual protection via automatic React JSX DOM escaping and backend input sanitization (`sanitize-html`).
+- **File Upload Security**: Strict MIME-type inspection and Magic Bytes binary signature validation (`MagicBytesValidationPipe`) preventing disguised malicious files.
+- **Mass Assignment / Over-Posting Protection**: Global NestJS `ValidationPipe` enforcing DTO whitelisting (`whitelist: true`, `forbidNonWhitelisted: true`).
 
 ### Social Network
 - Public profiles with usernames, nicknames, and avatars.
-- A dynamic home feed where users can create posts (with images), leave comments, and like content.
+- A dynamic home feed where users can create posts (supporting images, character counter up to 5,000 chars), leave comments, and like content.
 - Friend requests (pending, accepted, blocked) and visibility filtering.
 
 ### Real-Time Messaging
