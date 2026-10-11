@@ -379,7 +379,7 @@ export default function HomeFeed() {
                     {effectiveUser ? (
                       <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2 items-center">
                         <UserAvatar avatarUrl={user?.avatar} username={getDisplayName(user)} className="w-7 h-7 sm:w-8 sm:h-8 text-xs border border-border shrink-0" />
-                        <input type="text" placeholder="Ajouter un commentaire..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 min-w-0 bg-surface-hover border border-border-subtle rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm focus:outline-none focus:border-primary" />
+                        <input type="text" placeholder="Ajouter un commentaire..." maxLength={500} value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 min-w-0 bg-surface-hover border border-border-subtle rounded-full px-3 sm:px-4 py-1.5 text-xs sm:text-sm focus:outline-none focus:border-primary" />
                         <button type="submit" disabled={!commentInputs[post.id]?.trim()} className="bg-primary text-primary-content w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-primary-hover text-xs">
                           ➤
                         </button>

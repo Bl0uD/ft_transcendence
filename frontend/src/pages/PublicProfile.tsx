@@ -286,13 +286,13 @@ export default function PublicProfile() {
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/jpeg, image/png, image/webp, image/gif" className="hidden" />
                 <p className="text-xs text-text-muted">JPG, PNG, WEBP, GIF (Max: 2MB)</p>
               </div>
-              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nom d'utilisateur</label><input type="text" value={settingUsername} onChange={(e) => setSettingUsername(e.target.value)} required minLength={3} maxLength={20} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
-              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Surnom (Optionnel)</label><input type="text" value={settingNickname} onChange={(e) => setSettingNickname(e.target.value)} maxLength={20} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
-              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Email</label><input type="email" value={settingEmail} onChange={(e) => setSettingEmail(e.target.value)} required className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nom d'utilisateur</label><input type="text" value={settingUsername} onChange={(e) => setSettingUsername(e.target.value)} required minLength={3} maxLength={24} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Surnom (Optionnel)</label><input type="text" value={settingNickname} onChange={(e) => setSettingNickname(e.target.value)} maxLength={24} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-text-muted mb-1">Email</label><input type="email" value={settingEmail} onChange={(e) => setSettingEmail(e.target.value)} required maxLength={320} className="w-full rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" /></div>
               <div>
                 <label className="block text-xs font-semibold uppercase text-text-muted mb-1">Nouveau mot de passe (laisser vide sinon)</label>
                 <div className="relative flex items-center">
-                  <input type={showPassword ? 'text' : 'password'} value={settingPassword} onChange={(e) => setSettingPassword(e.target.value)} placeholder="••••••••" minLength={3} maxLength={20} className="w-full pr-10 rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" />
+                  <input type={showPassword ? 'text' : 'password'} value={settingPassword} onChange={(e) => setSettingPassword(e.target.value)} placeholder="••••••••" minLength={6} maxLength={100} className="w-full pr-10 rounded-xl border border-border bg-bg/50 px-3.5 py-2 text-sm text-text-main focus:border-primary focus:outline-none" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 text-text-muted hover:text-text-muted">{showPassword ? <ClosedEyeIcon className="w-4 h-4" /> : <OpenedEyeIcon className="w-4 h-4" />}</button>
                 </div>
               </div>
@@ -486,7 +486,7 @@ export default function PublicProfile() {
                         {currentUser ? (
                           <form onSubmit={(e) => submitComment(e, post.id)} className="flex gap-2 sm:gap-3 items-center">
                             <UserAvatar avatarUrl={currentUser.avatar} username={getDisplayName(currentUser)} className="w-7 h-7 sm:w-8 sm:h-8 text-xs shrink-0" />
-                            <input type="text" placeholder="Répondre..." value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-surface border border-border rounded-full px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm text-text-main focus:outline-none focus:border-primary transition-colors" />
+                            <input type="text" placeholder="Répondre..." maxLength={500} value={commentInputs[post.id] || ''} onChange={(e) => setCommentInputs({...commentInputs, [post.id]: e.target.value})} className="flex-1 bg-surface border border-border rounded-full px-4 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm text-text-main focus:outline-none focus:border-primary transition-colors" />
                             <button type="submit" disabled={!commentInputs[post.id]?.trim()} className="bg-primary text-primary-content w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-primary-hover text-xs">
                               ➤
                             </button>

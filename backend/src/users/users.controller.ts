@@ -20,6 +20,9 @@ export class UsersController {
 
   @Get('search/:query')
   async searchUsers(@Param('query') query: string) {
+    if (!query || query.length > 24) {
+      return [];
+    }
     return this.usersService.searchUsers(query);
   }
   @UseGuards(JwtTwoFactorGuard)
@@ -50,6 +53,19 @@ export class UsersController {
     @Body('is2faAuthenticated') is2faAuthenticated?: boolean,
     @UploadedFile(MagicBytesValidationPipe) file?: Express.Multer.File,
   ) {
+    if (username !== undefined && (username.trim().length < 3 || username.trim().length > 24)) {
+      throw new BadRequestException("Le nom d'utilisateur doit contenir entre 3 et 24 caractères.");
+    }
+    if (nickname !== undefined && nickname.trim().length > 24) {
+      throw new BadRequestException("Le surnom ne peut pas dépasser 24 caractères.");
+    }
+    if (email !== undefined && email.trim().length > 320) {
+      throw new BadRequestException("L'email ne peut pas dépasser 320 caractères.");
+    }
+    if (password !== undefined && password.trim() !== '' && (password.length < 6 || password.length > 100)) {
+      throw new BadRequestException("Le mot de passe doit contenir entre 6 et 100 caractères.");
+    }
+
     const userId = req.user?.userId || req.user?.sub;
     let avatar: string | undefined = undefined;
 
@@ -57,6 +73,12 @@ export class UsersController {
       avatar = `/uploads/avatars/${file.filename}`;
     }
 
-    return this.usersService.updateProfile(userId, { username, nickname, email, password, avatar });
+    return this.usersService.updateProfile(userId, { 
+      username: username?.trim(), 
+      nickname: nickname?.trim(), 
+      email: email?.trim()?.toLowerCase(), 
+      password, 
+      avatar 
+    });
   }
 }

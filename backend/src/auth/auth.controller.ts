@@ -4,6 +4,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 import { TwoFactorAuthService } from './2fa/two-factor-auth.service';
 import { JwtTwoFactorGuard } from './2fa/jwt-two-factor.guard';
 import { UsersService } from '../users/users.service';
@@ -26,7 +27,7 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() body: { identifier: string; password: string }) {
+  async login(@Body() body: LoginDto) {
     return this.authService.login(body);
   }
 

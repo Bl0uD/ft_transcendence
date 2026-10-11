@@ -93,6 +93,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
             <input
               type="text"
               placeholder="Chercher un pseudo..."
+              maxLength={24}
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -181,6 +182,7 @@ export default function TopNavBar({ onLoginClick }: TopNavBarProps) {
               type="text"
               autoFocus
               placeholder="Chercher un pseudo..."
+              maxLength={24}
               value={targetUsername}
               onChange={(e) => {
                 setTargetUsername(e.target.value);
